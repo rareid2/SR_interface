@@ -1,4 +1,4 @@
-# Stanford Raytracer Python Infterface
+# Stanford Raytracer Python Interface
 
 ## to set up --> use venv
 run:

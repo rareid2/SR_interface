@@ -7,6 +7,7 @@ from matplotlib.offsetbox import (TextArea, DrawingArea, OffsetImage,
                                   AnnotationBbox)
 from matplotlib.cbook import get_sample_data
 
+import cartopy
 import cartopy.crs as ccrs
 import datetime as dt
 from spacepy import coordinates as coord
@@ -77,7 +78,7 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, plot_kvec=T
 
         tmp_coords = coord.Coords(list(zip(r['pos'].x, r['pos'].y, r['pos'].z)), 'SM', 'car', units=['m', 'm', 'm'])
         tmp_kcoords = coord.Coords(list(zip((w/C) * r['n'].x, (w/C) * r['n'].y, (w/C) * r['n'].z)), 'SM', 'car', units=['m', 'm', 'm'])
-        print(tmp_kcoords)
+        
         # convert to a unit vector first
         unitk = [(float(tmp_kcoords[s].x), float(tmp_kcoords[s].y), float(tmp_kcoords[s].z)) / np.sqrt(tmp_kcoords[s].x**2 + tmp_kcoords[s].y**2 + tmp_kcoords[s].z**2) for s in range(len(tmp_kcoords))]
 
@@ -103,6 +104,8 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, plot_kvec=T
     ray1_sph = convert_spc(ray1, tvec_datetime, 'GEO', 'sph', units=['m','deg','deg'])
 
     ax = plt.axes(projection=ccrs.Orthographic(central_longitude=float(ray1_sph.long)-90, central_latitude=0.0))
+    ax.add_feature(cartopy.feature.OCEAN, zorder=0)
+    ax.add_feature(cartopy.feature.LAND, zorder=0, edgecolor='black')
     ax.coastlines()
     plt.savefig(ray_out_dir+'/ccrs_proj.png')
     plt.close()
@@ -116,9 +119,10 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, plot_kvec=T
         rotated_rcoords = rotateplane(float(ray1_sph.long), rc, tvec_datetime, crs, carsph, units)
     if plot_kvec:
         int_plt = len(rotated_rcoords)//10
+        ax.scatter(rotated_rcoords.x, rotated_rcoords.z, c = 'Black', s = 1, zorder = 103)
         ax.quiver(rotated_rcoords.x[::int_plt], rotated_rcoords.z[::int_plt], kc.x[::int_plt], kc.z[::int_plt], color='Black', zorder=104)
-        #for ii,i in enumerate(range(0,len(rotated_rcoords),int_plt)): # not the prettiest but it will work, just trying to annoate
-            #ax.text(rotated_rcoords.x[ii], rotated_rcoords.z[ii], str(ii))
+        for ii,i in enumerate(range(0,len(rotated_rcoords), int_plt)): # not the prettiest but it will work, just trying to annoate
+            ax.text(rotated_rcoords.x[i]-0.1, rotated_rcoords.z[i]-0.1, str(ii))
     else:
         ax.scatter(rotated_rcoords.x, rotated_rcoords.z, c = 'Black', s = 1, zorder = 103)
 
@@ -133,11 +137,13 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, plot_kvec=T
     plt.ylabel('L (R$_E$)')
     plt.xlim([0, max(L_shells)])
     plt.ylim([-2, 2])
+    plt.title(dt.datetime.strftime(ray_datenum, '%Y-%m-%d %H:%M:%S') + ' ' + str(round(w/(1e3*np.pi*2), 1)) + 'kHz')
+    plt.savefig(ray_out_dir + '/' + dt.datetime.strftime(ray_datenum, '%Y_%m_%d_%H%M%S') + '_' + str(round(w/(1e3*np.pi*2), 1)) + 'kHz' +'_2Dview' + '.png')
 
     if show_plot:
         plt.show()
 
-    return fig
+    return
 # --------------------------------------------------------------------------------------
 
 # ---------------------------------------- STIX PARAM --------------------------------------------
@@ -163,7 +169,7 @@ def stix_parameters(ray, t, w):
 # ---------------------------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------------------
-def plotrefractivesurface(ray_datenum, ray):
+def plotrefractivesurface(ray_datenum, ray, ray_out_dir):
     # set up phi vec
     phi_vec = np.linspace(0,360,int(1e5))*D2R
     w = ray['w']
@@ -248,9 +254,6 @@ def plotrefractivesurface(ray_datenum, ray):
             plt.legend(loc='upper right')
             ax.text(60, 65, r'$\alpha$' +  ' = ' + str(round(alphaedg,2)))
 
-            
-            rayfile_directory = '/home/rileyannereid/workspace/SR-output/rayfiles'
-            ray_out_dir = rayfile_directory + '/'+ dt.datetime.strftime(ray_datenum, '%Y-%m-%d %H:%M:%S')
             plt.title(dt.datetime.strftime(ray_datenum, '%Y-%m-%d %H:%M:%S') + ' ' + str(round(w/(1e3*np.pi*2), 1)) + 'kHz \n refractive surface ' + str(ti//int_plt))
             plt.savefig(ray_out_dir+'/refractive_surface'+str(ti//int_plt)+'.png')
 

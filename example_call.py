@@ -19,7 +19,7 @@ ray_datenum = dt.datetime(2020, 9, 14, 22, 55, tzinfo=dt.timezone.utc)
 
 # first, we need the positions of the satellites -- use the sat class
 dsx = sat()             # define a satellite object
-dsx.catnmbr = 44344     # prove NORAD ID
+dsx.catnmbr = 44344     # provide NORAD ID
 dsx.time = ray_datenum  # set time
 dsx.getTLE_ephem()      # get TLEs nearest to this time -- sometimes this will lag
 
@@ -30,7 +30,6 @@ dsx.propagatefromTLE(sec=0, orbit_dir='future', crs='SM', carsph='car', units=['
 ray_start = dsx.pos
 
 # next, define the direction of the ray!
-
 # set up a bfield class -- use this to find footpoints, trace fieldlines, and get unit vec of the fieldline
 bfield_ray_start = Bfieldinfo()
 bfield_ray_start.time = ray_datenum
@@ -51,22 +50,17 @@ ray_start_dir = convert_spc(cvals=ray_start_dir_c, dt_array=ray_datenum, crs='SM
 
 # run at a single time -- use run_rays and input a list of positions, directions, and freqs (ALL SAME LENGTH)
 # generates one input file and one output file with all rays in it
-
 nrays = 1 # how many rays
 freq = 25e3  # Hz
-rayfile_directory = '/home/rileyannereid/workspace/SR_output/rayfiles'
+rayfile_directory = '/home/rileyannereid/workspace/SR_output/data_analysis_spring2021'
 
 # simplest call
-positions = []
-directions = []
-freqs = []
-for n in range(nrays):
-    positions.append([float(ray_start.x[0]), float(ray_start.y[0]), float(ray_start.z[0])])
-    directions.append([float(ray_start_dir[0].x), float(ray_start_dir[0].y), float(ray_start_dir[0].z)])
-    freqs.append(freq)
+positions = [[float(ray_start.x[0]), float(ray_start.y[0]), float(ray_start.z[0])] for n in range(nrays)]
+directions = [[float(ray_start_dir[0].x), float(ray_start_dir[0].y), float(ray_start_dir[0].z)] for n in range(nrays)]
+freqs = [freq for n in range(nrays)]
 
 # time to run is about 1 sec every 10 rays 
-single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory)
+#single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory)
 
 # OR run parallel at different times -- use parallel_run_rays and input a list of times, and LIST OF LISTS with positions, 
 # directions, and frequencies
@@ -80,7 +74,6 @@ single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory)
 
 #parallel_run_rays(tvec, positions_list, directions_list, freqs_list, directory_list)
 
-
 # -------------------------------------------------------------------------
 # that's it! let's look at output
 
@@ -90,10 +83,9 @@ file_titles = os.listdir(ray_out_dir)
 
 # create empty lists to fill with ray files and damp files
 raylist = []
-
 for filename in file_titles:
     if '.ray' in filename:
         raylist += read_rayfile(os.path.join(ray_out_dir, filename))
 
-#plotray2D(ray_datenum, raylist, ray_out_dir, 'GEO', 'car', units=['Re','Re','Re'])
-#plotrefractivesurface(ray_datenum, raylist[0])
+plotray2D(ray_datenum, raylist, ray_out_dir, 'GEO', 'car', units=['Re','Re','Re'])
+plotrefractivesurface(ray_datenum, raylist[0], ray_out_dir)
