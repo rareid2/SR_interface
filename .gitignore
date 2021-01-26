@@ -1,0 +1,8 @@
+.__pycache__/*
+*.pyc 
+SR_env/*
+modeldumps/*
+*.dat
+
+# Make sure we include the folder itself tho
+!modeldumps/.gitkeep
