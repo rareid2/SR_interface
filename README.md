@@ -7,7 +7,10 @@ Next, run:
 ```python3 -m venv SR_env``` 
 
 actiavte it (you will need to use this command anytime you're in this folder)  
-```source SR_env/bin/activate``` 
+```source SR_env/bin/activate```    
+OR    
+```source SR_env/bin/activate.csh```    
+(depends on your system)
 
 next to download packages, run the following lines (requirements txt keeps breaking w spacepy):   
 ```pip install numpy```  
