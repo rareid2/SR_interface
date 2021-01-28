@@ -7,8 +7,6 @@ from matplotlib.offsetbox import (TextArea, DrawingArea, OffsetImage,
                                   AnnotationBbox)
 from matplotlib.cbook import get_sample_data
 
-import cartopy
-import cartopy.crs as ccrs
 import datetime as dt
 from spacepy import coordinates as coord
 from spacepy.time import Ticktock
@@ -98,21 +96,31 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, plot_kvec=T
         k_coords.append(new_kcoords)
         
     # -------------------------------- PLOTTING --------------------------------
-    
-    # make this into a an image (sneaky)
+
     ray1 = ray_coords[0][0]
     ray1_sph = convert_spc(ray1, tvec_datetime, 'GEO', 'sph', units=['m','deg','deg'])
+    
+    try:
+        import cartopy
+        import cartopy.crs as ccrs
+        # make this into a an image (sneaky)
+        ax = plt.axes(projection=ccrs.Orthographic(central_longitude=float(ray1_sph.long)-90, central_latitude=0.0))
+        ax.add_feature(cartopy.feature.OCEAN, zorder=0)
+        ax.add_feature(cartopy.feature.LAND, zorder=0, edgecolor='black')
+        ax.coastlines()
+        plt.savefig(ray_out_dir+'/ccrs_proj.png')
+        plt.close()
 
-    ax = plt.axes(projection=ccrs.Orthographic(central_longitude=float(ray1_sph.long)-90, central_latitude=0.0))
-    ax.add_feature(cartopy.feature.OCEAN, zorder=0)
-    ax.add_feature(cartopy.feature.LAND, zorder=0, edgecolor='black')
-    ax.coastlines()
-    plt.savefig(ray_out_dir+'/ccrs_proj.png')
-    plt.close()
+        img = plt.imread(ray_out_dir+'/ccrs_proj.png', format='png')
+        fig, ax = plt.subplots(figsize=(6,6))
+        ax.imshow(img, extent=[-1.62,1.62,-1.3,1.3]) # not the most scientific
 
-    img = plt.imread(ray_out_dir+'/ccrs_proj.png', format='png')
-    fig, ax = plt.subplots()
-    ax.imshow(img, extent=[-1.62,1.62,-1.3,1.3]) # not the most scientific
+    except:
+        fig, ax = plt.subplots(figsize=(6,6))
+        earth = plt.Circle((0, 0), 1, color='b', alpha=0.5, zorder=100)
+        iono = plt.Circle((0, 0), (R_E + H_IONO) / R_E, color='g', alpha=0.5, zorder=99)
+        ax.add_artist(earth)
+        ax.add_artist(iono)
 
     # plot the rays and kvec
     for rc, kc in zip(ray_coords, k_coords):
