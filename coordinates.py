@@ -5,7 +5,7 @@ import datetime as dt
 
 from constants_settings import *
 
-tb.update(leapsecs=True)
+#tb.update(leapsecs=True)
 
 # coordinate system transformations
 # options: 

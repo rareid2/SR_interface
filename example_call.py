@@ -33,7 +33,9 @@ ray_start = dsx.pos
 # set up a bfield class -- use this to find footpoints, trace fieldlines, and get unit vec of the fieldline
 bfield_ray_start = Bfieldinfo()
 bfield_ray_start.time = ray_datenum
-bfield_ray_start.pos = ray_start
+bfield_ray_start.pos = ray_start 
+
+# note to self to run for a TX
 
 # get the unit vector direction going north in SM coords -- use spherical for ease of rotation
 bfield_ray_start.Bfield_direction(hemis='north', crs='SM', carsph='sph')
@@ -52,7 +54,7 @@ ray_start_dir = convert_spc(cvals=ray_start_dir_c, dt_array=ray_datenum, crs='SM
 # generates one input file and one output file with all rays in it
 nrays = 1 # how many rays
 freq = 25e3  # Hz
-rayfile_directory = '/home/rileyannereid/workspace/SR_output/data_analysis_spring2021'
+rayfile_directory = '/Users/rileyannereid/macworkspace/SR_output/'
 
 # simplest call
 positions = [[float(ray_start.x[0]), float(ray_start.y[0]), float(ray_start.z[0])] for n in range(nrays)]
