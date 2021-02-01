@@ -20,7 +20,7 @@ from bfield import Bfieldinfo, trace_fieldline_ODE
 def rotateplane(plane_long, rc, tvec_datetime, crs, carsph, units):
     # rotate long to be in same plane
     rot_crs = convert_spc(rc, tvec_datetime, 'GEO', 'sph', units=['Re','deg','deg'])
-    rot_lon = [plane_long for new_lon in rot_crs.long]
+    rot_lon = [0 for new_lon in rot_crs.long]
     rot_crs_new = create_spc(list(zip(rot_crs.radi, rot_crs.lati, rot_lon)), tvec_datetime, 'GEO', 'sph', units=['Re','deg','deg'])
     final_crs = convert_spc(rot_crs_new, tvec_datetime, crs, carsph, units)
     return final_crs

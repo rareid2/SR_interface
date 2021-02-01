@@ -4,30 +4,37 @@ import os
 
 from constants_settings import *
 from coordinates import create_spc, convert_spc
-from satellites import sat
+from transmitters import vlf_tx
 from bfield import Bfieldinfo, trace_fieldline_ODE
 from run_rays import single_run_rays, parallel_run_rays
 from raytracer_utils import read_rayfile
 from ray_plots import plotray2D, plotrefractivesurface
+from get_dist import gaussian_dist
 
 # example call to ray tracer!
 # FIRST, navigate to constants_settings and make sure the settings are correct for the run
 
-# let's look at a conjunction between DSX and VPM:
-# use the datetime package to define the start time -- make sure to use UTC timezone
+# let's look at a TX at a specific date and time
 ray_datenum = dt.datetime(2020, 9, 14, 22, 55, tzinfo=dt.timezone.utc)
 
-# first, we need the positions of the satellites -- use the sat class
-dsx = sat()             # define a satellite object
-dsx.catnmbr = 44344     # provide NORAD ID
-dsx.time = ray_datenum  # set time
-dsx.getTLE_ephem()      # get TLEs nearest to this time -- sometimes this will lag
+# first, where is the transmitter on earth
+tx_loc = create_spc([1, 33.2385, -106.3464],ray_datenum,'GEO','sph',['Re','deg','deg'])
 
-# propagate the orbit! setting sec=0 will give you just the position at that time
-dsx.propagatefromTLE(sec=0, orbit_dir='future', crs='SM', carsph='car', units=['m','m','m'])
+# use the tx class
+wsmr = vlf_tx()
+wsmr.time = ray_datenum
+wsmr.pos = tx_loc
+wsmr.freq = 14.1e3
+
+# use this function to trace up the field line, set start_alt how far up the field line
+tx_crs_traced = wsmr.tracepos_up_fieldline(start_alt=1000e3)
+# this will return in SM car m,m,m coords
+# note that this only a single position! see the get_dist.py script for launching a guassian distribution
+
+#gaussian_dist(n=100, spread=100e3) # 100 points in xy sampled in gaussian dist with 100km spread
 
 # now we have ray start point in the correct coordinates (SM cartesian in m)
-ray_start = dsx.pos
+ray_start = tx_crs_traced
 
 # next, define the direction of the ray!
 # set up a bfield class -- use this to find footpoints, trace fieldlines, and get unit vec of the fieldline
@@ -36,12 +43,12 @@ bfield_ray_start.time = ray_datenum
 bfield_ray_start.pos = ray_start
 
 # get the unit vector direction going north in SM coords -- use spherical for ease of rotation
-bfield_ray_start.Bfield_direction(hemis='north', crs='SM', carsph='sph')
+bfield_ray_start.Bfield_direction(hemis='south', crs='SM', carsph='sph')
 bfield_dir = bfield_ray_start.unit_vec
 
 # we're going to change the polar angle - let's rotate to be 45 deg
 # NOTE THAT THIS IS 1-2 degree OFF of what the ray tracer will read -- for exactly field aligned, set ray_start_dir = np.zeros(3)
-alpha = 30
+alpha = 0
 ray_start_dir_c = create_spc(cor_array=[float(bfield_dir.radi[0]), float(bfield_dir.lati[0]) + alpha, float(bfield_dir.long[0])], dt_array=ray_datenum, crs='SM', carsph='sph', units=['Re','deg','deg'])
 # convert back to SM car -- keep in Re units
 ray_start_dir = convert_spc(cvals=ray_start_dir_c, dt_array=ray_datenum, crs='SM', carsph='car', units=['Re','Re','Re'])
