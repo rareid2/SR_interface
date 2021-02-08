@@ -6,3 +6,10 @@ modeldumps/*
 
 # Make sure we include the folder itself tho
 !modeldumps/.gitkeep
+
+# libxformd stuff to remove
+libxformd/__pycache__/*
+
+*.o
+*.a
+*.so

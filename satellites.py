@@ -8,7 +8,9 @@ import time
 from sgp4.earth_gravity import wgs84
 from sgp4.io import twoline2rv
 
-from coordinates import create_spc, convert_spc
+#from spc_coordinates import create_spc, convert_spc
+from libxformd import xflib
+xf = xflib.xflib(lib_path='libxformd/libxformd.so')
 
 # -------------------------------- SAT CLASS -----------------------------------------
 # just a nice way to mangage the satellites (VPM, DSX...)
@@ -108,12 +110,31 @@ class sat:
             pos_array[ti,:] = position
             vel_array[ti,:] = velocity
 
-        # finally, convert!
-        pos_spc = create_spc(pos_array, dt_array, 'GEI', 'car', ['km','km','km'])
-        #vel_spc = create_spc(vel_array, dt_array, 'GEI', 'car', ['km','km','km'])
-    
-        self.pos = convert_spc(pos_spc, dt_array, crs, carsph, units)
-        #self.vel = convert_spc(vel_spc, dt_array, crs, carsph, units)
+        # finally, convert (starts from GEI coords in km cartesian)
+        converted_coords = []
+        if carsph == 'car':
+            if crs == 'SM' and units == ['m','m','m']:
+                for pi, pos in enumerate(pos_array):
+                    new_coords = xf.gei2sm(pos*1e3, dt_array[pi])
+                    converted_coords.append(new_coords)
+            elif crs == 'SM' and units == ['km','km','km']:
+                for pi, pos in enumerate(pos_array):
+                    new_coords = xf.gei2sm(pos, dt_array[pi])
+                    converted_coords.append(new_coords)
+            elif crs == 'GEO' and units == ['m','m','m']:
+                for pi, pos in enumerate(pos_array):
+                    new_coords = xf.gei2geo(pos*1e3, dt_array[pi])
+                    converted_coords.append(new_coords)
+            elif crs == 'GEO' and units == ['km','km','km']:
+                for pi, pos in enumerate(pos_array):
+                    new_coords = xf.gei2geo(pos, dt_array[pi])
+                    converted_coords.append(new_coords)
+            else:
+                print('coordinate conversion not yet supported')
+        else:
+            print('coordinate conversion not yet supported')
+        
+        self.pos = converted_coords
 
 # ---------------------------------------------------------------------
 
@@ -131,7 +152,7 @@ class sat:
 #dsx.getTLE_ephem()
 
 # propagate for 10 seconds
-#psec = 60.0
+#psec = 10
 
 # propagate into the future
 # alternatively, use 'past' for previous
@@ -140,11 +161,11 @@ class sat:
 
 # select desired coordinate system
 #crs = 'GEO'
-#carsph = 'sph'
+#carsph = 'car'
 #units = ['m','m','m']
 
 # propagate
-#dsx.propagatefromTLE(psec, pdir, crs, carsph, units)
+#dsx.propagatefromTLE(int(psec), pdir, crs, carsph, units)
 
 # look @ updated position and velocity vectors
 #print(dsx.pos)

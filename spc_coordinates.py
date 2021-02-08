@@ -5,7 +5,8 @@ import datetime as dt
 
 from constants_settings import *
 
-#tb.update(leapsecs=True)
+# ----------------- spacepy coordinates (less accurate) ---------------------
+tb.update(leapsecs=True)
 
 # coordinate system transformations
 # options: 

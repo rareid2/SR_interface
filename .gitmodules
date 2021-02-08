@@ -1,0 +1,3 @@
+[submodule "libxformd"]
+	path = libxformd
+	url = git@github.com:asousa/libxformd.git

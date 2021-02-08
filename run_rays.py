@@ -90,7 +90,7 @@ def single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory
             damp_mode = 1
 
             ray_cmd = base_cmd + ' --gcpm_kp=%g' % (Kp)
-            damp_cmd = base_damp_cmd + ' --mode %d' % damp_mode
+            #damp_cmd = base_damp_cmd + ' --mode %d' % damp_mode
 
         if mode == 3:
             # Test the uniformly-sampled GCPM model
