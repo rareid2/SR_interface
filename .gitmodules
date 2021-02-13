@@ -1,3 +1,6 @@
 [submodule "libxformd"]
 	path = libxformd
-	url = git@github.com:asousa/libxformd.git
+	url = git@github.com:rareid2/libxformd.git
+[submodule]
+	path = pyglow
+	url = git@github.com:timduly4/pyglow.git

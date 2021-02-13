@@ -39,3 +39,4 @@ we need to clean up the version of shapely -- it breaks cartopy sometimes
 Run the following lines  
 ```pip uninstall shapely```  
 ```pip install shapely --no-binary shapely```  
+python3 -c "import pyglow; pyglow.update_indices(2019,2020)" 

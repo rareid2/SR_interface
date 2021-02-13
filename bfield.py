@@ -8,6 +8,11 @@ from scipy.integrate import ode
 from coordinates import create_spc, convert_spc
 from constants_settings import *
 
+from libxformd import xflib
+xf = xflib.xflib(lib_path='libxformd/libxformd.so')
+
+# requires spacepy coordinates....
+
 # -------------------------------- Bfieldinfo CLASS -----------------------------------------
 # just a nice way to mangage getting bfield info
 
@@ -55,6 +60,8 @@ def trace_fieldline_ODE(bfieldinfo_obj, hemis, crs, carsph, units):
         dir_val = 1
     else:
         dir_val = -1
+
+    self.pos = create_spc(bfieldinfo_obj.pos, bfieldinfo_obj.time,'GEO','car')
 
     if bfieldinfo_obj.pos.dtype != 'GEO' or bfieldinfo_obj.pos.units != ['Re','Re','Re'] or bfieldinfo_obj.pos.carsph == 'sph':
         p0 = convert_spc(bfieldinfo_obj.pos, bfieldinfo_obj.time, 'GEO', 'car', ['Re','Re','Re'])
@@ -125,6 +132,8 @@ class Bfieldinfo:
         tv = Ticktock(self.time)
 
         # make sure correct input coordinates
+
+
         if self.pos.dtype != 'GEO' or self.pos.units != ['Re','Re','Re'] or self.pos.carsph == 'sph':
             bpos = convert_spc(self.pos, self.time, 'GEO', 'car', ['Re','Re','Re'])
             B = irbem.get_Bfield(tv, bpos, extMag=self.extfield, options=self.opts, omnivals=None)

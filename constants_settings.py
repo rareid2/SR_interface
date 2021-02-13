@@ -20,7 +20,7 @@ M_EL = 9.1e-31                # kg
 M_P = 1.67e-27                # kg
 
 # where is the raytracer?? point to bin directory
-raytracer_dir = '/Users/rileyannereid/macworkspace/Stanford_Raytracer/bin'
+raytracer_dir = '/home/rileyannereid/workspace/Stanford_Raytracer/bin'
 
 #  --------------------------- CHANGE ENV SETTINGS HERE  --------------------------
 # Environmental parameters

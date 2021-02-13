@@ -8,9 +8,12 @@ import time
 from sgp4.earth_gravity import wgs84
 from sgp4.io import twoline2rv
 
-#from spc_coordinates import create_spc, convert_spc
+from constants_settings import *
+from convert_coords import convert2
 from libxformd import xflib
 xf = xflib.xflib(lib_path='libxformd/libxformd.so')
+
+from bfield_for import bfieldinfo
 
 # -------------------------------- SAT CLASS -----------------------------------------
 # just a nice way to mangage the satellites (VPM, DSX...)
@@ -111,62 +114,62 @@ class sat:
             vel_array[ti,:] = velocity
 
         # finally, convert (starts from GEI coords in km cartesian)
-        converted_coords = []
-        if carsph == 'car':
-            if crs == 'SM' and units == ['m','m','m']:
-                for pi, pos in enumerate(pos_array):
-                    new_coords = xf.gei2sm(pos*1e3, dt_array[pi])
-                    converted_coords.append(new_coords)
-            elif crs == 'SM' and units == ['km','km','km']:
-                for pi, pos in enumerate(pos_array):
-                    new_coords = xf.gei2sm(pos, dt_array[pi])
-                    converted_coords.append(new_coords)
-            elif crs == 'GEO' and units == ['m','m','m']:
-                for pi, pos in enumerate(pos_array):
-                    new_coords = xf.gei2geo(pos*1e3, dt_array[pi])
-                    converted_coords.append(new_coords)
-            elif crs == 'GEO' and units == ['km','km','km']:
-                for pi, pos in enumerate(pos_array):
-                    new_coords = xf.gei2geo(pos, dt_array[pi])
-                    converted_coords.append(new_coords)
-            else:
-                print('coordinate conversion not yet supported')
-        else:
-            print('coordinate conversion not yet supported')
-        
+        converted_coords = convert2(pos_array, dt_array, 'GEI', 'car', ['km','km','km'], crs, carsph, units)
         self.pos = converted_coords
+        self.time = dt_array # update time as well 
+
+    def getB(self, hemis, currentcrs, currentcarsph, currentunits):
+        if currentcrs != 'GEO' or currentcarsph != 'sph' or currentunits != ['km','deg','deg']:
+            newcoords = convert2(self.pos, self.time, crs, carsph, units, 'GEO', 'sph', ['km','deg','deg'])
+        else:
+            newcoords = self.pos
+        
+        # call bfield class and add pos and time (now in GEO sph coords)
+        b = bfieldinfo()
+        b.pos = newcoords
+        b.time = self.time
+        b.getBfield()
+
+        # defined desired direction 
+        if hemis == 'south':
+            dir = -1
+        else:
+            dir = 1
+
+        self.Bdir = b.Bunit * dir
+
+
 
 # ---------------------------------------------------------------------
 
 # Example Call! 
 # define an obj called dsx
-#dsx = sat()
+dsx = sat()
 
 # set the NORAD ID for dsx
-#dsx.catnmbr = 44344
+dsx.catnmbr = 44344
 
 # set the time we want orbit info
-#dsx.time = dt.datetime.now().replace(tzinfo=dt.timezone.utc)
+dsx.time = dt.datetime(2020,5,6,11,10, tzinfo=dt.timezone.utc)
 
 # get TLE
-#dsx.getTLE_ephem()
+dsx.getTLE_ephem()
 
 # propagate for 10 seconds
-#psec = 10
+psec = 10
 
 # propagate into the future
 # alternatively, use 'past' for previous
 # or 'both' for propagating in both directions in time
-#pdir = 'past'
+pdir = 'past'
 
-# select desired coordinate system
-#crs = 'GEO'
-#carsph = 'car'
-#units = ['m','m','m']
+# select desired coordinate system only GEO and SM supported rn
+crs = 'GEO'
+carsph = 'sph'
+units = ['Re','deg','deg']
 
 # propagate
-#dsx.propagatefromTLE(int(psec), pdir, crs, carsph, units)
-
-# look @ updated position and velocity vectors
-#print(dsx.pos)
-#dsx.vel
+dsx.propagatefromTLE(int(psec), pdir, crs, carsph, units)
+dsx.getB('north', crs, carsph, units)
+print(dsx.Bdir)
+# look @ updated position vec

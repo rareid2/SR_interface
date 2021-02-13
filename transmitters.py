@@ -3,11 +3,16 @@ import matplotlib.pyplot as plt
 import datetime as dt
 
 from constants_settings import *
-from coordinates import create_spc, convert_spc
 from bfield import Bfieldinfo, trace_fieldline_ODE
+
+#from spc_coordinates import create_spc, convert_spc
+from libxformd import xflib
+xf = xflib.xflib(lib_path='libxformd/libxformd.so')
 
 # -------------------------------- TX CLASS -----------------------------------------
 # just a nice way to mangage the transmitter launches
+
+# pos input must be spherical GEO coords
 
 # see end of script for example call
 # -------------------------------------------------------------------------------------
@@ -26,17 +31,10 @@ class vlf_tx:
             print('need pos first')
             return
 
-        if self.pos.carsph != 'sph':
-            check_hemi = convert_spc(self.pos, self.time, self.pos.dtype,'sph',[self.pos.units[0],'deg','deg'])
-            if float(check_hemi.lati) > 0:
-                hemis = 'south' # go opposite the tx
-            else:
-                hemis = 'north'
+        if float(check_hemi.lati) > 0:
+            hemis = 'south' # go opposite the tx
         else:
-            if float(self.pos.lati) > 0:
-                hemis = 'south' # go opposite the tx
-            else:
-                hemis = 'north'
+            hemis = 'north'
 
         tx_b = Bfieldinfo()
         tx_b.time = self.time 
@@ -46,7 +44,6 @@ class vlf_tx:
 
         bline = tx_b.fieldline
         trace_alt = R_E + start_alt
-
 
         for pos_crs in bline:
             if float(pos_crs.radi) > trace_alt:
@@ -63,14 +60,15 @@ class vlf_tx:
 # let's look at a TX at a specific date and time
 #ray_datenum = dt.datetime(2020, 9, 14, 22, 55, tzinfo=dt.timezone.utc)
 
-# first, where is the transmitter on earth
-#tx_loc = create_spc([1, 33.2385, -106.3464],ray_datenum,'GEO','sph',['Re','deg','deg'])
+# first, where is the transmitter on earth -- MUST be in GEO sph coordinates in m (or Re), deg, deg
+#tx_loc = [1, 33.2385, -106.3464]
 
 #wsmr = vlf_tx()
 #wsmr.time = ray_datenum
 #wsmr.pos = tx_loc
 #wsmr.freq = 14.1e3
 
+# returns in SM coords
 #tx_crs_traced = wsmr.tracepos_up_fieldline(start_alt=1000e3)
 
 # ---------------------------------------------------------------------
