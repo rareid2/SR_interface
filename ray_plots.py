@@ -8,21 +8,19 @@ from matplotlib.offsetbox import (TextArea, DrawingArea, OffsetImage,
 from matplotlib.cbook import get_sample_data
 
 import datetime as dt
-from spacepy import coordinates as coord
-from spacepy.time import Ticktock
 
 from constants_settings import *
-from coordinates import create_spc, convert_spc
+from convert_coords import convert2
 from raytracer_utils import read_rayfile,readdump, get_yearmiliday 
-from bfield import Bfieldinfo, trace_fieldline_ODE
+from bfield import getBline
 
 #---------------------------------------------------------------------------
 def rotateplane(plane_long, rc, tvec_datetime, crs, carsph, units):
     # rotate long to be in same plane
-    rot_crs = convert_spc(rc, tvec_datetime, 'GEO', 'sph', units=['Re','deg','deg'])
-    rot_lon = [0 for new_lon in rot_crs.long]
-    rot_crs_new = create_spc(list(zip(rot_crs.radi, rot_crs.lati, rot_lon)), tvec_datetime, 'GEO', 'sph', units=['Re','deg','deg'])
-    final_crs = convert_spc(rot_crs_new, tvec_datetime, crs, carsph, units)
+    rot_crs = convert2(rc, tvec_datetime, crs, carsph, units, 'GEO', 'sph', ['Re','deg','deg'])
+
+    rot_crs_new = [[rcs[0], rcs[1], 0] for rcs in rot_crs]
+    final_crs = convert2(rot_crs_new, tvec_datetime, 'GEO','sph', ['Re','deg','deg'], crs, carsph, units)
     return final_crs
 #---------------------------------------------------------------------------
 
@@ -30,18 +28,21 @@ def rotateplane(plane_long, rc, tvec_datetime, crs, carsph, units):
 def get_Lshells(lshells, tvec_datetime, crs, carsph, units):
     Lshell_fline = []
     for lsh in lshells:
-
-        L = Bfieldinfo()
-        L.time = tvec_datetime[0]
-        stpos = create_spc(cor_array=[lsh,0,0], dt_array=L.time, crs='GEO', carsph='car', units=['Re','Re','Re'])
-        L.pos = stpos
-
-        # trace a fieldline to the north + south hemisphere
-        trace_fieldline_ODE(L, 'north', crs, carsph, units)
-        Lshell_fline.append(L.fieldline)
-        trace_fieldline_ODE(L, 'south', crs, carsph, units)
-        Lshell_fline.append(L.fieldline)
-
+        # needs to be cartesian, output will be in Re
+        T = getBline([-lsh*R_E,0,0], tvec_datetime[0], 100)
+        
+        # repack
+        T_repackx = T.x
+        T_repacky = T.y
+        T_repackz = T.z
+        T_repack = [[tx, ty, tz] for tx,ty,tz in zip(T_repackx, T_repacky, T_repackz)]
+        
+        T_convert = convert2(T_repack, tvec_datetime, 'SM','car',['Re','Re','Re'], crs, carsph, units)
+        
+        T_repackx = [tt[0] for tt in T_convert]
+        T_repackz = [tt[2] for tt in T_convert]
+        
+        Lshell_fline.append([T_repackx, T_repackz])
     return Lshell_fline
 #---------------------------------------------------------------------------
 
@@ -68,37 +69,37 @@ def get_plasmasphere():
 #---------------------------------------------------------------------------
 def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, plot_kvec=True, show_plot=True):
 
+    # ONLY suports cartesian plotting!
+
     # convert to desired coordinate system into vector list rays
     ray_coords = []
     k_coords = []
     for r in raylist:
         w = r['w']
 
-        tmp_coords = coord.Coords(list(zip(r['pos'].x, r['pos'].y, r['pos'].z)), 'SM', 'car', units=['m', 'm', 'm'])
-        tmp_kcoords = coord.Coords(list(zip((w/C) * r['n'].x, (w/C) * r['n'].y, (w/C) * r['n'].z)), 'SM', 'car', units=['m', 'm', 'm'])
+        # comes in as SM car in m 
+        tmp_coords = list(zip(r['pos'].x, r['pos'].y, r['pos'].z))
+        tmp_kcoords = list(zip((w/C) * r['n'].x, (w/C) * r['n'].y, (w/C) * r['n'].z))
         
         # convert to a unit vector first
-        unitk = [(float(tmp_kcoords[s].x), float(tmp_kcoords[s].y), float(tmp_kcoords[s].z)) / np.sqrt(tmp_kcoords[s].x**2 + tmp_kcoords[s].y**2 + tmp_kcoords[s].z**2) for s in range(len(tmp_kcoords))]
+        unitk = [(tmp_kcoords[s][0], tmp_kcoords[s][1], tmp_kcoords[s][2]) / np.sqrt(tmp_kcoords[s][0]**2 + tmp_kcoords[s][1]**2 + tmp_kcoords[s][2]**2) for s in range(len(tmp_kcoords))]
 
         tvec_datetime = [ray_datenum + dt.timedelta(seconds=s) for s in r['time']]
-        tmp_kcoords = create_spc(unitk, tvec_datetime, 'SM', 'car', units=['m','m','m'])
 
-        tmp_coords.ticks = Ticktock(tvec_datetime, 'UTC')  # add ticks
-        tmp_kcoords.ticks = Ticktock(tvec_datetime, 'UTC') # add ticks
-
-        new_kcoords = convert_spc(tmp_kcoords, tvec_datetime, crs, carsph, units)
-
-        tmp_coords.sim_time = r['time']
-        new_coords = convert_spc(tmp_coords, tvec_datetime, crs, carsph, units)
+        new_kcoords = convert2(unitk, tvec_datetime, 'SM', 'car', ['Re','Re','Re'], crs, carsph, ['Re','Re','Re'])
+        new_coords = convert2(tmp_coords, tvec_datetime, 'SM', 'car', ['m','m','m'], crs, carsph, units)
 
         # save it
         ray_coords.append(new_coords)
         k_coords.append(new_kcoords)
         
     # -------------------------------- PLOTTING --------------------------------
+    # flatten
+    ray_coords = ray_coords[0]
+    k_coords = k_coords[0]
 
-    ray1 = ray_coords[0][0]
-    ray1_sph = convert_spc(ray1, tvec_datetime, 'GEO', 'sph', units=['m','deg','deg'])
+    ray1 = ray_coords[0]
+    ray1_sph = convert2([ray1], tvec_datetime, crs, carsph, units, 'GEO', 'sph', ['m','deg','deg'])
     
     try:
         import cartopy
@@ -123,23 +124,36 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, plot_kvec=T
         ax.add_artist(iono)
 
     # plot the rays and kvec
+    rotated_rcoords = []
     for rc, kc in zip(ray_coords, k_coords):
-        rotated_rcoords = rotateplane(float(ray1_sph.long), rc, tvec_datetime, crs, carsph, units)
+        rotated = rotateplane(ray1_sph[0][2], [rc], tvec_datetime, crs, carsph, units)
+        rotated_rcoords.append(rotated[0])
+    
+    # repack in x,y,z
+    rotated_rcoords_x = [rcs[0] for rcs in rotated_rcoords]
+    rotated_rcoords_y = [rcs[1] for rcs in rotated_rcoords]
+    rotated_rcoords_z = [rcs[2] for rcs in rotated_rcoords]
+
+    # same for k
+    kc_x = [kcs[0] for kcs in k_coords]
+    kc_y = [kcs[1] for kcs in k_coords]
+    kc_z = [kcs[2] for kcs in k_coords]
+
     if plot_kvec:
-        int_plt = len(rotated_rcoords)//10
-        ax.scatter(rotated_rcoords.x, rotated_rcoords.z, c = 'Black', s = 1, zorder = 103)
-        ax.quiver(rotated_rcoords.x[::int_plt], rotated_rcoords.z[::int_plt], kc.x[::int_plt], kc.z[::int_plt], color='Black', zorder=104)
+        int_plt = len(rotated_rcoords_x)//10
+        ax.scatter(rotated_rcoords_x, rotated_rcoords_z, c = 'Black', s = 1, zorder = 103)
+        ax.quiver(rotated_rcoords_x[::int_plt], rotated_rcoords_z[::int_plt], kc_x[::int_plt], kc_z[::int_plt], color='Black', zorder=104)
         for ii,i in enumerate(range(0,len(rotated_rcoords), int_plt)): # not the prettiest but it will work, just trying to annoate
-            ax.text(rotated_rcoords.x[i]-0.1, rotated_rcoords.z[i]-0.1, str(ii))
+            ax.text(rotated_rcoords_x[i]-0.1, rotated_rcoords_z[i]-0.1, str(ii))
     else:
-        ax.scatter(rotated_rcoords.x, rotated_rcoords.z, c = 'Black', s = 1, zorder = 103)
+        ax.scatter(rotated_rcoords_x, rotated_rcoords_z, c = 'Black', s = 1, zorder = 103)
 
     # plot field lines (from IGRF13 model)
     L_shells = [2, 3, 4]  # Field lines to draw
     Lshell_flines = get_Lshells(L_shells, tvec_datetime, crs, carsph, units)
     
     for lfline in Lshell_flines:
-        ax.plot(lfline.x, lfline.z, color='Black', linewidth=1, linestyle='dashed')
+        ax.plot(lfline[0], lfline[1], color='Black', linewidth=1, linestyle='dashed')
 
     plt.xlabel('L (R$_E$)')
     plt.ylabel('L (R$_E$)')
@@ -181,15 +195,14 @@ def plotrefractivesurface(ray_datenum, ray, ray_out_dir):
     # set up phi vec
     phi_vec = np.linspace(0,360,int(1e5))*D2R
     w = ray['w']
-
-    tmp_kcoords = coord.Coords(list(zip((w/C) * ray['n'].x, (w/C) * ray['n'].y, (w/C) * ray['n'].z)), 'SM', 'car', units=['m', 'm', 'm'])
+    
+    # comes in as SM car in m 
+    tmp_kcoords = list(zip((w/C) * ray['n'].x, (w/C) * ray['n'].y, (w/C) * ray['n'].z))
         
     # convert to a unit vector first
-    unitk = [(float(tmp_kcoords[s].x), float(tmp_kcoords[s].y), float(tmp_kcoords[s].z)) / np.sqrt(tmp_kcoords[s].x**2 + tmp_kcoords[s].y**2 + tmp_kcoords[s].z**2) for s in range(len(tmp_kcoords))]
-
+    unitk = [(tmp_kcoords[s][0], tmp_kcoords[s][1], tmp_kcoords[s][2]) / np.sqrt(tmp_kcoords[s][0]**2 + tmp_kcoords[s][1]**2 + tmp_kcoords[s][2]**2) for s in range(len(tmp_kcoords))]
     tvec_datetime = [ray_datenum + dt.timedelta(seconds=s) for s in ray['time']]
-    kcoords = create_spc(unitk, tvec_datetime, 'SM', 'car', units=['m','m','m'])
-    kcoords.ticks = Ticktock(tvec_datetime)
+    kcoords = unitk
 
     int_plt = len(kcoords)//10
 
@@ -210,7 +223,7 @@ def plotrefractivesurface(ray_datenum, ray, ray_out_dir):
             Bmag = np.linalg.norm(B)
             bunit = B/Bmag
 
-            kunit = np.array([float(kcoords[ti].x), float(kcoords[ti].y), float(kcoords[ti].z)])
+            kunit = np.array([kcoords[ti][0], kcoords[ti][1], kcoords[ti][2]])
 
             alpha = np.arccos(np.dot(kunit, bunit))
             alphaedg = float(alpha)*R2D

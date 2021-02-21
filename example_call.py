@@ -3,9 +3,8 @@ import datetime as dt
 import os
 
 from constants_settings import *
-from coordinates import create_spc, convert_spc
 from satellites import sat
-from bfield import Bfieldinfo, trace_fieldline_ODE
+from bfield import getBdir
 from run_rays import single_run_rays, parallel_run_rays
 from raytracer_utils import read_rayfile
 from ray_plots import plotray2D, plotrefractivesurface
@@ -17,7 +16,7 @@ from ray_plots import plotray2D, plotrefractivesurface
 # use the datetime package to define the start time -- make sure to use UTC timezone
 ray_datenum = dt.datetime(2020, 9, 14, 22, 55, tzinfo=dt.timezone.utc)
 
-# first, we need the positions of the satellites -- use the sat class
+# we need the positions of the satellites -- use the sat class
 dsx = sat()             # define a satellite object
 dsx.catnmbr = 44344     # provide NORAD ID
 dsx.time = ray_datenum  # set time
@@ -29,58 +28,50 @@ dsx.propagatefromTLE(sec=0, orbit_dir='future', crs='SM', carsph='car', units=['
 # now we have ray start point in the correct coordinates (SM cartesian in m)
 ray_start = dsx.pos
 
-# next, define the direction of the ray!
-# set up a bfield class -- use this to find footpoints, trace fieldlines, and get unit vec of the fieldline
-bfield_ray_start = Bfieldinfo()
-bfield_ray_start.time = ray_datenum
-bfield_ray_start.pos = ray_start 
+# next, define the direction of the ray
+# this step will actually run the raytracer to sample the Bfield correctly
+# returns the Bfield unit vector at the start point in SM car
 
-# note to self to run for a TX
+# thetas and phis are vectors corresponding to starting directions
+# theta = increases the polar angle
+# phi = increases the azimuth angle
+rayfile_directory = '/home/rileyannereid/workspace/SR_output'
 
-# get the unit vector direction going north in SM coords -- use spherical for ease of rotation
-bfield_ray_start.Bfield_direction(hemis='north', crs='SM', carsph='sph')
-bfield_dir = bfield_ray_start.unit_vec
-
-# we're going to change the polar angle - let's rotate to be 45 deg
-# NOTE THAT THIS IS 1-2 degree OFF of what the ray tracer will read -- for exactly field aligned, set ray_start_dir = np.zeros(3)
-alpha = 30
-ray_start_dir_c = create_spc(cor_array=[float(bfield_dir.radi[0]), float(bfield_dir.lati[0]) + alpha, float(bfield_dir.long[0])], dt_array=ray_datenum, crs='SM', carsph='sph', units=['Re','deg','deg'])
-# convert back to SM car -- keep in Re units
-ray_start_dir = convert_spc(cvals=ray_start_dir_c, dt_array=ray_datenum, crs='SM', carsph='car', units=['Re','Re','Re'])
-
-# two ways to run
+# returns a vector of directions (thetas and phis must be same length) 
+directions = getBdir(ray_start, ray_datenum, rayfile_directory, thetas=[0], phis=[0])
 
 # run at a single time -- use run_rays and input a list of positions, directions, and freqs (ALL SAME LENGTH)
 # generates one input file and one output file with all rays in it
-nrays = 1 # how many rays
+
+nrays = 1 # how many rays -- THIS MUST BE EQUAL IN LENGTH TO THETAS AND PHIS
 freq = 25e3  # Hz
-rayfile_directory = '/Users/rileyannereid/macworkspace/SR_output/'
 
 # simplest call
-positions = [[float(ray_start.x[0]), float(ray_start.y[0]), float(ray_start.z[0])] for n in range(nrays)]
-directions = [[float(ray_start_dir[0].x), float(ray_start_dir[0].y), float(ray_start_dir[0].z)] for n in range(nrays)]
+positions = [ray_start[0] for n in range(nrays)]
 freqs = [freq for n in range(nrays)]
 
 # time to run is about 1 sec every 10 rays 
 single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory)
 
+"""
 # OR run parallel at different times -- use parallel_run_rays and input a list of times, and LIST OF LISTS with positions, 
 # directions, and frequencies
 
 # let's say we want to re-run this every 10 seconds in time for a minute
-#tvec = [ray_datenum + dt.timedelta(seconds=i) for i in range(0,60,10)]
-#positions_list = [positions for i in range(len(tvec))]
-#directions_list = [directions for i in range(len(tvec))]
-#freqs_list = [freqs for i in range(len(tvec))]
-#directory_list = [rayfile_directory for i in range(len(tvec))]
+tvec = [ray_datenum + dt.timedelta(seconds=i) for i in range(0,60,10)]
+positions_list = [positions for i in range(len(tvec))]
+directions_list = [directions for i in range(len(tvec))]
+freqs_list = [freqs for i in range(len(tvec))]
+directory_list = [rayfile_directory for i in range(len(tvec))]
 
-#parallel_run_rays(tvec, positions_list, directions_list, freqs_list, directory_list)
+parallel_run_rays(tvec, positions_list, directions_list, freqs_list, directory_list)
+"""
 
 # -------------------------------------------------------------------------
 # that's it! let's look at output
 
 # Load all the rayfiles in the output directory
-ray_out_dir = rayfile_directory + '/'+ dt.datetime.strftime(ray_datenum, '%Y-%m-%d %H:%M:%S')
+ray_out_dir = rayfile_directory + '/'+dt.datetime.strftime(ray_datenum, '%Y-%m-%d %H:%M:%S')
 file_titles = os.listdir(ray_out_dir)
 
 # create empty lists to fill with ray files and damp files

@@ -3,16 +3,11 @@ import matplotlib.pyplot as plt
 import datetime as dt
 
 from constants_settings import *
-from bfield import Bfieldinfo, trace_fieldline_ODE
-
-#from spc_coordinates import create_spc, convert_spc
 from libxformd import xflib
 xf = xflib.xflib(lib_path='libxformd/libxformd.so')
 
 # -------------------------------- TX CLASS -----------------------------------------
 # just a nice way to mangage the transmitter launches
-
-# pos input must be spherical GEO coords
 
 # see end of script for example call
 # -------------------------------------------------------------------------------------
