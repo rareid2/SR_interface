@@ -1,5 +1,7 @@
 # import needed packages
 import numpy as np
+import random
+from constants_settings import *
 
 # easy function to get a nice distribution defined by # of points and spread
 def gaussian_dist(n, spread):
@@ -21,11 +23,15 @@ def antenna_MC(n):
     thetalist = []
     philist = []
 
-    for i in range(n):
+    while len(thetalist) < n:
         xi = random.random()
         th = np.arccos(1-2*xi)
         pxi = random.random()
-        thetalist.append(R2D*th)
+        if R2D*th > 90:
+            continue
+        else:
+            thetalist.append(R2D*th)
+            thetalist.append(R2D*-1*th)
 
     # generate random azimuth angles uniformly btwn 0 and pi (forward hemi)
     for i in range(int(n)):
@@ -33,3 +39,13 @@ def antenna_MC(n):
         philist.append(R2D*ph)
 
     return thetalist, philist
+"""
+nrays = 100000
+thetas,phis = antenna_MC(nrays)
+import matplotlib.pyplot as plt
+plt.hist(thetas,bins=50)
+plt.ylabel('counts')
+
+plt.xlabel(r'd$\theta$')
+plt.show()
+"""

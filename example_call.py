@@ -14,7 +14,7 @@ from ray_plots import plotray2D, plotrefractivesurface
 
 # let's look at a conjunction between DSX and VPM:
 # use the datetime package to define the start time -- make sure to use UTC timezone
-ray_datenum = dt.datetime(2020, 9, 14, 22, 55, tzinfo=dt.timezone.utc)
+ray_datenum = dt.datetime(2020,6,24,21,0,tzinfo=dt.timezone.utc)
 
 # we need the positions of the satellites -- use the sat class
 dsx = sat()             # define a satellite object
@@ -38,13 +38,13 @@ ray_start = dsx.pos
 rayfile_directory = '/home/rileyannereid/workspace/SR_output'
 
 # returns a vector of directions (thetas and phis must be same length) 
-directions = getBdir(ray_start, ray_datenum, rayfile_directory, thetas=[0], phis=[0])
+directions = getBdir(ray_start, ray_datenum, rayfile_directory, thetas=[-180], phis=[0])
 
 # run at a single time -- use run_rays and input a list of positions, directions, and freqs (ALL SAME LENGTH)
 # generates one input file and one output file with all rays in it
 
 nrays = 1 # how many rays -- THIS MUST BE EQUAL IN LENGTH TO THETAS AND PHIS
-freq = 25e3  # Hz
+freq = 8.83e3  # Hz
 
 # simplest call
 positions = [ray_start[0] for n in range(nrays)]

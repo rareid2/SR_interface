@@ -18,29 +18,40 @@ from bfield import getBline
 def rotateplane(plane_long, rc, tvec_datetime, crs, carsph, units):
     # rotate long to be in same plane
     rot_crs = convert2(rc, tvec_datetime, crs, carsph, units, 'GEO', 'sph', ['Re','deg','deg'])
+    if plane_long > 180:
+        plane_long = -1*(plane_long-180)
+        y_catch = -1
+    else:
+        y_catch=1
 
-    rot_crs_new = [[rcs[0], rcs[1], 0] for rcs in rot_crs]
+    rot_crs_new = [[rcs[0], rcs[1], 0] for rcs in rot_crs] # ROTATE to 0
     final_crs = convert2(rot_crs_new, tvec_datetime, 'GEO','sph', ['Re','deg','deg'], crs, carsph, units)
-    return final_crs
+
+    final_crs2 = [[fc[0],fc[1],fc[2]] for fc in final_crs]
+
+    return final_crs2
 #---------------------------------------------------------------------------
 
 #---------------------------------------------------------------------------
-def get_Lshells(lshells, tvec_datetime, crs, carsph, units):
+def get_Lshells(lshells, long, tvec_datetime, crs, carsph, units):
     Lshell_fline = []
     for lsh in lshells:
         # needs to be cartesian, output will be in Re
-        T = getBline([-lsh*R_E,0,0], tvec_datetime[0], 100)
+        newt = convert2([[-lsh*R_E,0,long]], tvec_datetime, 'GEO', 'sph', ['m','deg','deg'], 'SM', 'car', ['m','m','m'])
+        T = getBline(newt[0], tvec_datetime[0], 100)
         
         # repack
         T_repackx = T.x
         T_repacky = T.y
         T_repackz = T.z
         T_repack = [[tx, ty, tz] for tx,ty,tz in zip(T_repackx, T_repacky, T_repackz)]
+        LshellT = [tvec_datetime[0] for i in range(len(T_repack))]
         
-        T_convert = convert2(T_repack, tvec_datetime, 'SM','car',['Re','Re','Re'], crs, carsph, units)
+        T_convert = convert2(T_repack, LshellT, 'SM','car',['Re','Re','Re'], crs, carsph, units)
+        T_convert2 = rotateplane(long, T_convert, tvec_datetime, crs, carsph, units)
         
-        T_repackx = [tt[0] for tt in T_convert]
-        T_repackz = [tt[2] for tt in T_convert]
+        T_repackx = [tt[0] for tt in T_convert2]
+        T_repackz = [tt[2] for tt in T_convert2]
         
         Lshell_fline.append([T_repackx, T_repackz])
     return Lshell_fline
@@ -83,7 +94,6 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, plot_kvec=T
         
         # convert to a unit vector first
         unitk = [(tmp_kcoords[s][0], tmp_kcoords[s][1], tmp_kcoords[s][2]) / np.sqrt(tmp_kcoords[s][0]**2 + tmp_kcoords[s][1]**2 + tmp_kcoords[s][2]**2) for s in range(len(tmp_kcoords))]
-
         tvec_datetime = [ray_datenum + dt.timedelta(seconds=s) for s in r['time']]
 
         new_kcoords = convert2(unitk, tvec_datetime, 'SM', 'car', ['Re','Re','Re'], crs, carsph, ['Re','Re','Re'])
@@ -100,12 +110,12 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, plot_kvec=T
 
     ray1 = ray_coords[0]
     ray1_sph = convert2([ray1], tvec_datetime, crs, carsph, units, 'GEO', 'sph', ['m','deg','deg'])
-    
+
     try:
         import cartopy
         import cartopy.crs as ccrs
         # make this into a an image (sneaky)
-        ax = plt.axes(projection=ccrs.Orthographic(central_longitude=float(ray1_sph.long)-90, central_latitude=0.0))
+        ax = plt.axes(projection=ccrs.Orthographic(central_longitude=float(ray1_sph[0][2])-90, central_latitude=0.0))
         ax.add_feature(cartopy.feature.OCEAN, zorder=0)
         ax.add_feature(cartopy.feature.LAND, zorder=0, edgecolor='black')
         ax.coastlines()
@@ -125,24 +135,29 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, plot_kvec=T
 
     # plot the rays and kvec
     rotated_rcoords = []
+    rotated_kcoords = []
+    print(ray1_sph[0][2])
     for rc, kc in zip(ray_coords, k_coords):
         rotated = rotateplane(ray1_sph[0][2], [rc], tvec_datetime, crs, carsph, units)
         rotated_rcoords.append(rotated[0])
-    
+        
+        rotated = rotateplane(ray1_sph[0][2], [kc], tvec_datetime, crs, carsph, units)
+        rotated_kcoords.append(rotated[0])
+
     # repack in x,y,z
     rotated_rcoords_x = [rcs[0] for rcs in rotated_rcoords]
     rotated_rcoords_y = [rcs[1] for rcs in rotated_rcoords]
     rotated_rcoords_z = [rcs[2] for rcs in rotated_rcoords]
 
     # same for k
-    kc_x = [kcs[0] for kcs in k_coords]
-    kc_y = [kcs[1] for kcs in k_coords]
-    kc_z = [kcs[2] for kcs in k_coords]
+    kc_x = [kcs[0] for kcs in rotated_kcoords]
+    kc_y = [kcs[1] for kcs in rotated_kcoords]
+    kc_z = [kcs[2] for kcs in rotated_kcoords]
 
     if plot_kvec:
         int_plt = len(rotated_rcoords_x)//10
         ax.scatter(rotated_rcoords_x, rotated_rcoords_z, c = 'Black', s = 1, zorder = 103)
-        ax.quiver(rotated_rcoords_x[::int_plt], rotated_rcoords_z[::int_plt], kc_x[::int_plt], kc_z[::int_plt], color='Black', zorder=104)
+        ax.quiver(rotated_rcoords_x[::int_plt], rotated_rcoords_z[::int_plt], np.array(kc_x[::int_plt]), kc_z[::int_plt], color='Black', zorder=104)
         for ii,i in enumerate(range(0,len(rotated_rcoords), int_plt)): # not the prettiest but it will work, just trying to annoate
             ax.text(rotated_rcoords_x[i]-0.1, rotated_rcoords_z[i]-0.1, str(ii))
     else:
@@ -150,7 +165,7 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, plot_kvec=T
 
     # plot field lines (from IGRF13 model)
     L_shells = [2, 3, 4]  # Field lines to draw
-    Lshell_flines = get_Lshells(L_shells, tvec_datetime, crs, carsph, units)
+    Lshell_flines = get_Lshells(L_shells, ray1_sph[0][2],tvec_datetime, crs, carsph, units)
     
     for lfline in Lshell_flines:
         ax.plot(lfline[0], lfline[1], color='Black', linewidth=1, linestyle='dashed')
