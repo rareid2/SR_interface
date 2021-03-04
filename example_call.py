@@ -3,18 +3,23 @@ import datetime as dt
 import os
 
 from constants_settings import *
+from convert_coords import convert2
 from satellites import sat
+from transmitters import vlf_tx
 from bfield import getBdir
 from run_rays import single_run_rays, parallel_run_rays
 from raytracer_utils import read_rayfile
 from ray_plots import plotray2D, plotrefractivesurface
 
 # example call to ray tracer!
+# ----------------------------- set up ------------------------------------------
+rayfile_directory = '/home/rileyannereid/workspace/SR_output' # store output here
+
 # FIRST, navigate to constants_settings and make sure the settings are correct for the run
 
 # let's look at a conjunction between DSX and VPM:
 # use the datetime package to define the start time -- make sure to use UTC timezone
-ray_datenum = dt.datetime(2020,8,17,21,22, tzinfo=dt.timezone.utc)
+ray_datenum = dt.datetime(2020,5,19,15,34, tzinfo=dt.timezone.utc)
 
 # we need the positions of the satellites -- use the sat class
 dsx = sat()             # define a satellite object
@@ -28,10 +33,30 @@ dsx.propagatefromTLE(sec=0, orbit_dir='future', crs='SM', carsph='car', units=['
 # now we have ray start point in the correct coordinates (SM cartesian in m)
 ray_start = dsx.pos
 
-
-# if you wanted to launch from a TX instead, 
-
+# if you wanted to launch from a TX instead, use the TX class and use:
 """
+# first, where is the transmitter on earth -- set crs carsph units to be input and output
+# RIGHT NOW, ONLY SUPPORTS GEO SPH COORDS IN RE, DEG, DEG
+crs='GEO'
+carsph='sph'
+units=['Re','deg','deg'] 
+tx_loc = [1, 33.2385, -106.3464] # set location
+
+# call tx class
+wsmr = vlf_tx()
+wsmr.time = ray_datenum
+wsmr.pos = tx_loc
+wsmr.freq = 14.1e3
+
+# find position traced up fieldline -- first argument is altitude in km above earths surface
+# tx crs traced is the fieldline, traced pos is the position at requested altitude
+tx_crs_traced, traced_pos = wsmr.tracepos_up_fieldline(1000,crs,carsph,units)
+# convert to SM 
+SM_tx = convert2([traced_pos],[wsmr.time],crs,carsph,units,'SM','car',['m','m','m'])
+ray_start = SM_tx
+# finally, check out get_dist for defining a guassian of positions to launch rays at this location
+""""
+
 # next, define the direction of the ray
 # this step will actually run the raytracer to sample the Bfield correctly
 # returns the Bfield unit vector at the start point in SM car
@@ -39,16 +64,16 @@ ray_start = dsx.pos
 # thetas and phis are vectors corresponding to starting directions
 # theta = increases the polar angle
 # phi = increases the azimuth angle
-rayfile_directory = '/home/rileyannereid/workspace/SR_output'
 
 # returns a vector of directions (thetas and phis must be same length) 
-directions = getBdir(ray_start, ray_datenum, rayfile_directory, thetas=[0], phis=[0])
+# theta = 0 goes north, theta=180 goes south
+directions = getBdir(ray_start, ray_datenum, rayfile_directory, thetas=[180], phis=[0])
 
 # run at a single time -- use run_rays and input a list of positions, directions, and freqs (ALL SAME LENGTH)
 # generates one input file and one output file with all rays in it
 
 nrays = 1 # how many rays -- THIS MUST BE EQUAL IN LENGTH TO THETAS AND PHIS
-freq = 8.83e3  # Hz
+freq = 14e3  # Hz
 
 # simplest call
 positions = [ray_start[0] for n in range(nrays)]
@@ -60,7 +85,7 @@ single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory)
 
 # OR run parallel at different times -- use parallel_run_rays and input a list of times, and LIST OF LISTS with positions, 
 # directions, and frequencies
-
+"""
 # let's say we want to re-run this every 10 seconds in time for a minute
 tvec = [ray_datenum + dt.timedelta(seconds=i) for i in range(0,60,10)]
 positions_list = [positions for i in range(len(tvec))]
@@ -69,9 +94,9 @@ freqs_list = [freqs for i in range(len(tvec))]
 directory_list = [rayfile_directory for i in range(len(tvec))]
 
 parallel_run_rays(tvec, positions_list, directions_list, freqs_list, directory_list)
+"""
 
-
-# -------------------------------------------------------------------------
+# ------------------------------------- output -------------------------------------------------
 # that's it! let's look at output
 
 # Load all the rayfiles in the output directory
@@ -84,6 +109,5 @@ for filename in file_titles:
     if '.ray' in filename:
         raylist += read_rayfile(os.path.join(ray_out_dir, filename))
 
-#plotray2D(ray_datenum, raylist, ray_out_dir, 'GEO', 'car', units=['Re','Re','Re'])
-#plotrefractivesurface(ray_datenum, raylist[0], ray_out_dir)
-"""
+plotray2D(ray_datenum, raylist, ray_out_dir, 'GEO', 'car', units=['Re','Re','Re'])
+plotrefractivesurface(ray_datenum, raylist[0], ray_out_dir)

@@ -78,19 +78,19 @@ class vlf_tx:
 
 # Example Call! 
 # let's look at a TX at a specific date and time
-ray_datenum = dt.datetime(2020, 9, 14, 22, 55, tzinfo=dt.timezone.utc)
+#ray_datenum = dt.datetime(2020, 9, 14, 22, 55, tzinfo=dt.timezone.utc)
 
 # first, where is the transmitter on earth -- set crs carsph units to be input and output
-crs='GEO'
-carsph='sph'
-units=['Re','deg','deg'] # NEEDS TO BE RE
-tx_loc = [1, 33.2385, -106.3464]
+#crs='GEO'
+#carsph='sph'
+#units=['Re','deg','deg'] # NEEDS TO BE RE
+#tx_loc = [1, 33.2385, -106.3464]
 
-wsmr = vlf_tx()
-wsmr.time = ray_datenum
-wsmr.pos = tx_loc
-wsmr.freq = 14.1e3
+#wsmr = vlf_tx()
+#wsmr.time = ray_datenum
+#wsmr.pos = tx_loc
+#wsmr.freq = 14.1e3
 
 # find position traced up fieldline
-tx_crs_traced, traced_pos = wsmr.tracepos_up_fieldline(1000,crs,carsph,units) # input start alt in km
+#tx_crs_traced, traced_pos = wsmr.tracepos_up_fieldline(1000,crs,carsph,units) # input start alt in km
 # ---------------------------------------------------------------------
