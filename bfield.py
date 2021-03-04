@@ -9,7 +9,7 @@ import PyGeopack as gp
 
 # uses PyGeopack (same as raytracer but its still a lil diff)
 # pos MUST be in SM car in m
-# returns line in SM car in m
+# returns line in SM car in Re
 
 # output T object:
 """
@@ -38,7 +38,7 @@ FlLen 	Field line length in planetary radii
 R 	R = sqrt(x**2 + y**2 + z**2)
 """
 
-def getBline(pos, ray_datenum, stopalt):
+def getBline(pos, ray_datenum):
 
     makedate = ray_datenum.strftime('%Y%m%d')
     Date = int(makedate)

@@ -28,12 +28,9 @@ dsx.propagatefromTLE(sec=0, orbit_dir='future', crs='SM', carsph='car', units=['
 # now we have ray start point in the correct coordinates (SM cartesian in m)
 ray_start = dsx.pos
 
-vpm = sat()             # define a satellite object
-vpm.catnmbr = 45120     # provide NORAD ID
-vpm.time = ray_datenum  # set time
-vpm.getTLE_ephem()      # get TLEs nearest to this time -- sometimes this will lag
-vpm.propagatefromTLE(sec=0, orbit_dir='future', crs='GEO', carsph='sph', units=['m','deg','deg'])
-print(vpm.pos)
+
+# if you wanted to launch from a TX instead, 
+
 """
 # next, define the direction of the ray
 # this step will actually run the raytracer to sample the Bfield correctly

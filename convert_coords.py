@@ -19,7 +19,6 @@ def convert2(pos_array, dt_array, crs1, carsph1, units1, crs2, carsph2, units2):
             new_coords = xf.s2c(pos)
             converted_coords.append(new_coords)
         pos_array = converted_coords # now in cartesian
-        
     # now all in cartesian, proceed
     converted_coords = []
     if crs1 == 'GEI':
