@@ -81,7 +81,7 @@ class sat:
             
             epoch_n = epoch_dt.index(min(epoch_dt))
             # get the data!
-            self.TLE = [retData[epoch_n]['TLE_LINE1'], retData[n]['TLE_LINE2']]
+            self.TLE = [retData[epoch_n]['TLE_LINE1'], retData[epoch_n]['TLE_LINE2']]
 
         session.close()
         print("retrieved TLE from SpaceTrak for " + retData[epoch_n]['EPOCH'])

@@ -14,7 +14,7 @@ from ray_plots import plotray2D, plotrefractivesurface
 
 # let's look at a conjunction between DSX and VPM:
 # use the datetime package to define the start time -- make sure to use UTC timezone
-ray_datenum = dt.datetime(2020,8,17,21,22,tzinfo=dt.timezone.utc)
+ray_datenum = dt.datetime(2020,8,17,21,22, tzinfo=dt.timezone.utc)
 
 # we need the positions of the satellites -- use the sat class
 dsx = sat()             # define a satellite object
@@ -34,7 +34,7 @@ vpm.time = ray_datenum  # set time
 vpm.getTLE_ephem()      # get TLEs nearest to this time -- sometimes this will lag
 vpm.propagatefromTLE(sec=0, orbit_dir='future', crs='GEO', carsph='sph', units=['m','deg','deg'])
 print(vpm.pos)
-
+"""
 # next, define the direction of the ray
 # this step will actually run the raytracer to sample the Bfield correctly
 # returns the Bfield unit vector at the start point in SM car
@@ -60,7 +60,7 @@ freqs = [freq for n in range(nrays)]
 # time to run is about 1 sec every 10 rays 
 single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory)
 
-"""
+
 # OR run parallel at different times -- use parallel_run_rays and input a list of times, and LIST OF LISTS with positions, 
 # directions, and frequencies
 
@@ -72,7 +72,7 @@ freqs_list = [freqs for i in range(len(tvec))]
 directory_list = [rayfile_directory for i in range(len(tvec))]
 
 parallel_run_rays(tvec, positions_list, directions_list, freqs_list, directory_list)
-"""
+
 
 # -------------------------------------------------------------------------
 # that's it! let's look at output
@@ -87,5 +87,6 @@ for filename in file_titles:
     if '.ray' in filename:
         raylist += read_rayfile(os.path.join(ray_out_dir, filename))
 
-plotray2D(ray_datenum, raylist, ray_out_dir, 'GEO', 'car', units=['Re','Re','Re'])
-plotrefractivesurface(ray_datenum, raylist[0], ray_out_dir)
+#plotray2D(ray_datenum, raylist, ray_out_dir, 'GEO', 'car', units=['Re','Re','Re'])
+#plotrefractivesurface(ray_datenum, raylist[0], ray_out_dir)
+"""
