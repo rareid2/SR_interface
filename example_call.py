@@ -14,7 +14,7 @@ from ray_plots import plotray2D, plotrefractivesurface
 
 # let's look at a conjunction between DSX and VPM:
 # use the datetime package to define the start time -- make sure to use UTC timezone
-ray_datenum = dt.datetime(2020,6,24,21,0,tzinfo=dt.timezone.utc)
+ray_datenum = dt.datetime(2020,8,17,21,22,tzinfo=dt.timezone.utc)
 
 # we need the positions of the satellites -- use the sat class
 dsx = sat()             # define a satellite object
@@ -28,6 +28,13 @@ dsx.propagatefromTLE(sec=0, orbit_dir='future', crs='SM', carsph='car', units=['
 # now we have ray start point in the correct coordinates (SM cartesian in m)
 ray_start = dsx.pos
 
+vpm = sat()             # define a satellite object
+vpm.catnmbr = 45120     # provide NORAD ID
+vpm.time = ray_datenum  # set time
+vpm.getTLE_ephem()      # get TLEs nearest to this time -- sometimes this will lag
+vpm.propagatefromTLE(sec=0, orbit_dir='future', crs='GEO', carsph='sph', units=['m','deg','deg'])
+print(vpm.pos)
+
 # next, define the direction of the ray
 # this step will actually run the raytracer to sample the Bfield correctly
 # returns the Bfield unit vector at the start point in SM car
@@ -38,7 +45,7 @@ ray_start = dsx.pos
 rayfile_directory = '/home/rileyannereid/workspace/SR_output'
 
 # returns a vector of directions (thetas and phis must be same length) 
-directions = getBdir(ray_start, ray_datenum, rayfile_directory, thetas=[-180], phis=[0])
+directions = getBdir(ray_start, ray_datenum, rayfile_directory, thetas=[0], phis=[0])
 
 # run at a single time -- use run_rays and input a list of positions, directions, and freqs (ALL SAME LENGTH)
 # generates one input file and one output file with all rays in it

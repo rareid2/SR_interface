@@ -34,7 +34,7 @@ BzIMF = -5
 W = [0.132, 0.303, 0.083, 0.070, 0.211, 0.308]  # Doesn't matter if we're not using Tsyg
 
 # Simulation parameters
-t_max = 1.5      # Maximum duration in seconds
+t_max = 5        # Maximum duration in seconds
 dt0 = 1e-3       # Initial timestep in seconds
 dtmax = 0.1      # Maximum allowable timestep in seconds
 root = 2         # Which root of the Appleton-Hartree equation
