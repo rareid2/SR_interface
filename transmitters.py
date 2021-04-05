@@ -44,6 +44,8 @@ class vlf_tx:
 
         # to find location at start alt, need to interpolate
         start_alt = ((start_alt*1e3) / R_E) + 1 # now in RE
+
+        # why did this throw an error? 
         if carsph != 'sph': #need sph for this to work, add more handling later
             print('error!')
         else:

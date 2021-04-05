@@ -71,7 +71,7 @@ def get_plasmasphere():
     #fig.colorbar(g, ax=ax, orientation="horizontal", pad = 0.2, label= 'Plasmasphere density')
 
 #---------------------------------------------------------------------------
-def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, plot_kvec=True, show_plot=True):
+def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, plot_kvec=False, show_plot=True):
 
     # ONLY suports cartesian plotting!
 
@@ -162,6 +162,7 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, plot_kvec=T
         for ii,i in enumerate(range(0,len(rotated_rcoords), int_plt)): # not the prettiest but it will work, just trying to annoate
             ax.text(rotated_rcoords_x[i]-0.1, rotated_rcoords_z[i]-0.1, str(ii))
     else:
+        ax.scatter(rotated_rcoords_x[0], rotated_rcoords_z[0], c = 'Blue', s=10)
         ax.scatter(rotated_rcoords_x, rotated_rcoords_z, c = 'Black', s = 1, zorder = 103)
 
     # plot field lines (from IGRF13 model)
@@ -214,7 +215,7 @@ def plotrefractivesurface(ray_datenum, ray, ray_out_dir):
     
     # comes in as SM car in m 
     tmp_kcoords = list(zip((w/C) * ray['n'].x, (w/C) * ray['n'].y, (w/C) * ray['n'].z))
-        
+
     # convert to a unit vector first
     unitk = [(tmp_kcoords[s][0], tmp_kcoords[s][1], tmp_kcoords[s][2]) / np.sqrt(tmp_kcoords[s][0]**2 + tmp_kcoords[s][1]**2 + tmp_kcoords[s][2]**2) for s in range(len(tmp_kcoords))]
     tvec_datetime = [ray_datenum + dt.timedelta(seconds=s) for s in ray['time']]
@@ -238,8 +239,10 @@ def plotrefractivesurface(ray_datenum, ray, ray_out_dir):
             B   =  ray['B0'].iloc[ti]
             Bmag = np.linalg.norm(B)
             bunit = B/Bmag
+            print(bunit)
 
             kunit = np.array([kcoords[ti][0], kcoords[ti][1], kcoords[ti][2]])
+            print(kunit)
 
             alpha = np.arccos(np.dot(kunit, bunit))
             alphaedg = float(alpha)*R2D
@@ -297,3 +300,134 @@ def plotrefractivesurface(ray_datenum, ray, ray_out_dir):
     return
 
 # ------------------------------------------- END --------------------------------------------
+
+def plot_damp(damplist,thetas, ray_out_dir):
+
+    fig = plt.figure(figsize =(6, 4))
+
+    # damplist is a list of output from dampfiles
+    # each dampfile outputs 2 lists, one is a list of ray times
+    # the other is a list of ray damps 
+
+    for dn in damplist: # parses each FILE output
+        for di, (dtime, ddamp) in enumerate(zip(dn[0],dn[1])): # parses each RAY in file 
+            plt.plot(dtime,ddamp,label=str((-1*thetas[di])-180))
+ 
+    """
+    # damping attempt
+    ray = raylist[0]
+
+    # set up phi vec
+    w = ray['w']
+
+    # comes in as SM car in m 
+    tmp_kcoords = list(zip((w/C) * ray['n'].x, (w/C) * ray['n'].y, (w/C) * ray['n'].z))
+
+    # convert to a unit vector first
+    unitk = [(tmp_kcoords[s][0], tmp_kcoords[s][1], tmp_kcoords[s][2]) / np.sqrt(tmp_kcoords[s][0]**2 + tmp_kcoords[s][1]**2 + tmp_kcoords[s][2]**2) for s in range(len(tmp_kcoords))]
+    tvec_datetime = [ray_datenum + dt.timedelta(seconds=s) for s in ray['time']]
+    kcoords = unitk
+
+    for ti, t in enumerate(ray['time']):
+        # get stix param
+        R, L, P, S, D = stix_parameters(ray, ti, w)
+        root = -1 # whistler solution
+
+        # find phi
+        B   =  ray['B0'].iloc[ti]
+        Bmag = np.linalg.norm(B)
+        bunit = B/Bmag
+
+
+        Q    = np.abs(np.array(ray['qs'].iloc[ti,:]))
+        M    = np.array(ray['ms'].iloc[ti,:])
+        Ns   = np.array(ray['Ns'].iloc[ti,:])
+
+        Wcs   = Q*Bmag/M
+        Wps2  = Ns*pow(Q,2)/EPS0/M
+
+        kunit = np.array([kcoords[ti][0], kcoords[ti][1], kcoords[ti][2]])
+
+        alpha = np.arccos(np.dot(kunit, bunit))
+        
+        alphaedg = float(alpha)*R2D
+
+        # Solve the cold plasma dispersion relation
+        cos2phi = pow(np.cos(alpha),2)
+        sin2phi = pow(np.sin(alpha),2)
+
+        A = S*sin2phi + P*cos2phi
+        B = R*L*sin2phi + P*S*(1.0+cos2phi)
+
+        discriminant = B*B - 4.0*A*R*L*P
+        n1sq = (B + np.sqrt(discriminant))/(2.0*A)
+        n2sq = (B - np.sqrt(discriminant))/(2.0*A)
+
+        # negative refers to the fact that ^^^ B - sqrt
+        n1 = np.sqrt(n1sq)
+        n2 = np.sqrt(n2sq)
+
+        eta = n2
+        # first coeff
+        #An = 1
+        #c1 = An / (4*eta*(2*A*eta**2 - B))
+        #gamma_constant = 2*np.pi**2 * Wps2[0] / (ray['w'] * kparallel)
+
+
+        # plot the surface
+        #ax.plot(eta_vec*np.sin(phi_vec), eta_vec*np.cos(phi_vec), 'gray', LineWidth = 1, label = 'e + ions')
+        #quiver_mag = eta_vec[phi_ind_save]
+        #ax.plot([0, quiver_mag*np.sin(float(alpha))], [0, quiver_mag*np.cos(float(alpha))], 'r--')
+
+        # i have reasonable confidence in eta, A,B,D,L,P,S,R
+    """
+    
+    plt.xlabel('seconds')
+    plt.legend()
+    plt.title('geometric factor off')
+    plt.savefig(ray_out_dir+'/attempt1_geomoff.png')
+    plt.close()
+
+def plotgeomfactor(ray_datenum, raylist, ray_out_dir, crs, carsph, units, show_plot=True):
+
+    # convert to desired coordinate system into vector list rays
+    ray_coords = []
+    for r in raylist:
+        w = r['w']
+
+        # comes in as SM car in m 
+        tmp_coords = list(zip(r['pos'].x, r['pos'].y, r['pos'].z))
+        
+        # convert to a unit vector first
+        tvec_datetime = [ray_datenum + dt.timedelta(seconds=s) for s in r['time']]
+        seconds_passed = [s for s in r['time']]
+
+        new_coords = convert2(tmp_coords, tvec_datetime, 'SM', 'car', ['m','m','m'], crs, carsph, units)
+
+        # save it
+        ray_coords.append(new_coords)
+        
+    # -------------------------------- PLOTTING --------------------------------
+    # flatten
+    ray_coords = ray_coords[0]
+    r_init = ray_coords[0][0]
+    lat_init = ray_coords[0][1]
+    
+    fig, ax = plt.subplots(figsize=(6,6))
+    
+    for ti, rc in enumerate(ray_coords):
+        # find geometric factor
+        gf = r_init * np.cos(lat_init*D2R) / (rc[0] * np.cos(rc[1]*D2R))
+        ax.scatter(seconds_passed[ti],gf,color='b')
+
+    plt.xlabel('seconds')
+    #plt.gcf().autofmt_xdate()
+    plt.ylabel('Geom. Factor')
+    plt.title(dt.datetime.strftime(ray_datenum, '%Y-%m-%d %H:%M:%S') + ' ' + str(round(w/(1e3*np.pi*2), 1)) + 'kHz')
+    plt.savefig(ray_out_dir + '/' + dt.datetime.strftime(ray_datenum, '%Y_%m_%d_%H%M%S') + '_' + str(round(w/(1e3*np.pi*2), 1)) + 'kHz' +'_geomfac_RE' + '.png')
+
+    if show_plot:
+        plt.show()
+
+    return
+# --------------------------------------------------------------------------------------

@@ -66,7 +66,7 @@ def read_rayfiles(directory, freq, latmin, latmax, lonmin, lonmax):
 
 
 def read_damp(dampfile):
-    x = pd.read_csv(dampfile, delim_whitespace=True, header=None)
+    x = pd.read_table(dampfile,delim_whitespace=True,header=None,names=['ray','co','no'],engine='python')
 
     raynums = np.unique(x[0])
     numrays = len(raynums)
@@ -83,7 +83,36 @@ def read_damp(dampfile):
 
     return out
 
+def read_damp_simple(dampfile):
+    f = open(dampfile)
+    raynums = []
+    lines = []
+    for line in f:
+        lines.append(line)
+        sline = line.split()
+        raynum = sline[0]
+        raynums.append(raynum)
+    f.close()
 
+
+    # find number of rays
+    # converting our list to set
+    new_set = set(raynums)
+    print(len(new_set), ' rays found')
+    rays_t = []
+    rays_d = []
+    for rn in range(1,len(new_set)+1):
+        raytime = []
+        raydamp = []
+        for line in lines:
+            sline = line.split()
+            if int(sline[0]) == rn:
+                raytime.append(float(sline[1]))
+                raydamp.append(float(sline[2]))
+        rays_t.append(raytime)
+        rays_d.append(raydamp)
+
+    return [rays_t, rays_d]
 
 def read_rayfile(rayfile):
     ''' Load output from Forest's raytracer'''
@@ -138,6 +167,7 @@ def read_rayfile(rayfile):
 
         # read damping data too, if we have it:
         if (tmp.shape[1] > 20+4*data['Nspec']):
+            print('we have it')
             data['damping'] = tmp.loc[:,20+4*data['Nspec']]
 
             

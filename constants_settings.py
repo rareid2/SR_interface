@@ -58,7 +58,7 @@ minalt = R_E + 475e3   # cutoff altitude in meters
 modes_to_do = [1]
 
 # Should we include a geometric focusing term in the damping?
-include_geom_factor = 1  # 1 for yes
+include_geom_factor = 0  # 1 for yes
 
 # interpolation parameters for mode 4
 scattered_interp_window_scale = 1.2
