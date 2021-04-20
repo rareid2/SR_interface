@@ -32,7 +32,7 @@ def get_Lshells(lshells, tvec_datetime, crs, carsph, units):
         # needs to be cartesian, output will be in Re
         # plot l shell as if at equator and prime merid
         newt = convert2([[lsh*R_E,0,0]], tvec_datetime, 'GEO', 'sph', ['m','deg','deg'], 'SM', 'car', ['m','m','m'])
-        T = getBline(newt[0], tvec_datetime[0])
+        T = getBline(newt[0], tvec_datetime[0],100)
         
         # repack
         T_repackx = T.x
@@ -71,7 +71,7 @@ def get_plasmasphere():
     #fig.colorbar(g, ax=ax, orientation="horizontal", pad = 0.2, label= 'Plasmasphere density')
 
 #---------------------------------------------------------------------------
-def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, plot_kvec=False, show_plot=True):
+def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, md, plot_kvec=False, show_plot=True):
 
     # ONLY suports cartesian plotting!
 
@@ -177,7 +177,7 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, plot_kvec=F
     plt.xlim([0, max(L_shells)])
     plt.ylim([-2, 2])
     plt.title(dt.datetime.strftime(ray_datenum, '%Y-%m-%d %H:%M:%S') + ' ' + str(round(w/(1e3*np.pi*2), 1)) + 'kHz')
-    plt.savefig(ray_out_dir + '/' + dt.datetime.strftime(ray_datenum, '%Y_%m_%d_%H%M%S') + '_' + str(round(w/(1e3*np.pi*2), 1)) + 'kHz' +'_2Dview' + '.png')
+    plt.savefig(ray_out_dir + '/' + dt.datetime.strftime(ray_datenum, '%Y_%m_%d_%H%M%S') + '_' + str(round(w/(1e3*np.pi*2), 1)) + 'kHz' +'_2Dview' + str(md) + '.png')
 
     if show_plot:
         plt.show()
@@ -233,16 +233,14 @@ def plotrefractivesurface(ray_datenum, ray, ray_out_dir):
             eta_vec = np.zeros_like(phi_vec)
 
             # solution from antenna white paper!
-            # resangle = np.arctan(np.sqrt(-P/S)) -- not accurate
-
+            #resangle = np.arctan(np.sqrt(-P/S)) 
+            #print(resangle)
             # find phi
             B   =  ray['B0'].iloc[ti]
             Bmag = np.linalg.norm(B)
             bunit = B/Bmag
-            print(bunit)
 
             kunit = np.array([kcoords[ti][0], kcoords[ti][1], kcoords[ti][2]])
-            print(kunit)
 
             alpha = np.arccos(np.dot(kunit, bunit))
             alphaedg = float(alpha)*R2D
@@ -384,8 +382,8 @@ def plot_damp(damplist,thetas, ray_out_dir):
     
     plt.xlabel('seconds')
     plt.legend()
-    plt.title('geometric factor off')
-    plt.savefig(ray_out_dir+'/attempt1_geomoff.png')
+    plt.title('landau damping with geometric factor')
+    plt.savefig(ray_out_dir+'/landau_geomon.png')
     plt.close()
 
 def plotgeomfactor(ray_datenum, raylist, ray_out_dir, crs, carsph, units, show_plot=True):
@@ -431,3 +429,18 @@ def plotgeomfactor(ray_datenum, raylist, ray_out_dir, crs, carsph, units, show_p
 
     return
 # --------------------------------------------------------------------------------------
+
+def plotNe(ray_datenum, raylist, ray_out_dir, crs, carsph, units, show_plot=True):
+    
+    for ri,r in enumerate(raylist):
+        Ne = []
+        for ti, t in enumerate(r['time']):
+            edens = np.array(r['Ns'].iloc[ti])
+            Ne.append(np.log10(edens[0]))
+        plt.plot(r['time'],Ne,label=['e - model '+str(ri)])
+    #plt.legend()
+    plt.xlabel('time [sec]')
+    plt.xlim([0,0.5])
+    plt.ylabel('log(density)')
+    plt.show()
+    plt.close()

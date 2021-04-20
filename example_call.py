@@ -9,7 +9,7 @@ from transmitters import vlf_tx
 from bfield import getBdir
 from run_rays import single_run_rays, parallel_run_rays
 from raytracer_utils import read_rayfile, read_damp_simple
-from ray_plots import plotray2D, plotrefractivesurface, plot_damp, plotgeomfactor, stix_parameters
+from ray_plots import plotray2D, plotrefractivesurface, plot_damp, plotgeomfactor, stix_parameters, plotNe
 
 import matplotlib.pyplot as plt
 
@@ -69,9 +69,12 @@ ray_start = SM_tx
 
 # returns a vector of directions (thetas and phis must be same length) 
 # theta = 0 goes north, theta=180 goes south
-thetas = [-195]
+thetas = [-180]
 
-directions = getBdir(ray_start, ray_datenum, rayfile_directory, thetas=thetas, phis=np.zeros(len(thetas)))
+# what mode to run? see constants settings for descriptions
+md = 1
+
+directions, ra = getBdir(ray_start, ray_datenum, rayfile_directory, thetas,np.zeros(len(thetas)),md)
 
 # run at a single time -- use run_rays and input a list of positions, directions, and freqs (ALL SAME LENGTH)
 # generates one input file and one output file with all rays in it
@@ -84,10 +87,9 @@ positions = [ray_start[0] for n in range(nrays)]
 freqs = [freq for n in range(nrays)]
 
 # time to run is about 1 sec every 10 rays 
-single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory)
+single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory,md)
 
 """
-
 # OR run parallel at different times -- use parallel_run_rays and input a list of times, and LIST OF LISTS with positions, 
 # directions, and frequencies
 
@@ -118,8 +120,10 @@ for filename in file_titles:
         dd = read_damp_simple(os.path.join(ray_out_dir, filename)) 
         damplist.append(dd)
 
-#plotray2D(ray_datenum, raylist, ray_out_dir, 'GEO', 'car', units=['Re','Re','Re'])
+plotray2D(ray_datenum, raylist, ray_out_dir, 'GEO', 'car', ['Re','Re','Re'],md)
 #plotrefractivesurface(ray_datenum, raylist[0], ray_out_dir)
 
 #plotgeomfactor(ray_datenum, raylist, ray_out_dir, 'GEO', 'sph', units=['Re','deg','deg'])
 #plot_damp(damplist, thetas, ray_out_dir)
+
+#plotNe(ray_datenum, raylist, ray_out_dir, 'GEO', 'sph', units=['Re','deg','deg'])

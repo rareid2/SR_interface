@@ -325,7 +325,7 @@ def gen_ngofile(Kp, configfile):
 # ---------------------------------- END GEN NGO CONFIG FILE --------------------------------------
 
 #  -------------------------------    INITIALIZE MODEL DUMP   --------------------------------------
-def modeldump(ray_datenum):
+def modeldump(ray_datenum,md):
 
   yearday, milliseconds_day = get_yearmiliday(ray_datenum)
 
@@ -346,6 +346,7 @@ def modeldump(ray_datenum):
   # Dump plasmasphere models
 
   #print("Dumping plasmasphere models")
+  modes_to_do = [md]
 
   for mode in modes_to_do:
       for plane in ['XZ', 'XY', 'YZ']:

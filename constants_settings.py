@@ -55,10 +55,12 @@ minalt = R_E + 475e3   # cutoff altitude in meters
 #   5 - (not real)
 #   6 - Simplified GCPM from Austin Sousa's thesis
 
-modes_to_do = [1]
+#   7 - New! Diffusive Equilibrium AT64ThCh (see docs)
+
+#modes_to_do = [1]
 
 # Should we include a geometric focusing term in the damping?
-include_geom_factor = 0  # 1 for yes
+include_geom_factor = 1  # 1 for yes
 
 # interpolation parameters for mode 4
 scattered_interp_window_scale = 1.2

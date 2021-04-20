@@ -38,7 +38,7 @@ FlLen 	Field line length in planetary radii
 R 	R = sqrt(x**2 + y**2 + z**2)
 """
 
-def getBline(pos, ray_datenum):
+def getBline(pos, ray_datenum,stopalt):
 
     makedate = ray_datenum.strftime('%Y%m%d')
     Date = int(makedate)
@@ -49,19 +49,19 @@ def getBline(pos, ray_datenum):
     z = pos[2]/R_E
 
     # uses T96, need to confirm this is constistent w raytracer
-    T = gp.TraceField(x,y,z,Date,ut,Model='T96',CoordIn='SM',CoordOut='SM')
+    T = gp.TraceField(x,y,z,Date,ut,Model='T96',CoordIn='SM',CoordOut='SM',alt=stopalt)
     return T
 
 # --------------------------------------------------------------------
 # a helper func to run a ray to get the most accuarate Bfield 
 # use for defining wavenormals
 
-def getBdir(ray_start, ray_datenum, rayfile_directory, thetas, phis):
+def getBdir(ray_start, ray_datenum, rayfile_directory, thetas, phis, md):
     positions = ray_start
     directions = [(0,0,0)]
     freqs = [5e3]
 
-    single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory)
+    single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory, md)
 
     # Load all the rayfiles in the output directory
     ray_out_dir = rayfile_directory + '/'+dt.datetime.strftime(ray_datenum, '%Y-%m-%d %H:%M:%S')
@@ -90,4 +90,10 @@ def getBdir(ray_start, ray_datenum, rayfile_directory, thetas, phis):
         new_dir = [sph_dir[0][0],sph_dir[0][1]+theta, sph_dir[0][2]+phi]
         converted_dir = convert2([new_dir], ray_datenum, 'SM', 'sph', ['Re','deg','deg'], 'SM', 'car', ['Re','Re','Re']) 
         converted_dirs.append(converted_dir[0])
-    return converted_dirs # returns unit vector of directions corresponding to input theta and phi vals
+
+    # also return resonance angle, can be useful for initializing rays
+    from ray_plots import stix_parameters
+    R, L, P, S, D = stix_parameters(r, 0, r['w']) # get stix params for initial time point
+    resangle = np.arctan(np.sqrt(-P/S))
+
+    return converted_dirs, resangle # returns unit vector of directions corresponding to input theta and phi vals

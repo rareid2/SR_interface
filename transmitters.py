@@ -31,7 +31,7 @@ class vlf_tx:
         # bfield needs input in SM car, m
         bpos = convert2([self.pos], [self.time], crs, carsph, units, 'SM','car', ['m','m','m'])
 
-        T = getBline(bpos[0],self.time) # returned in SM coords car Re
+        T = getBline(bpos[0],self.time,100) # returned in SM coords car Re
         
         # repack and convert
         T_repackx = T.x

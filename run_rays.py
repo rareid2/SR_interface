@@ -9,7 +9,7 @@ from constants_settings import *
 from run_model_dump import modeldump
 from raytracer_utils import get_yearmiliday
 
-def single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory):
+def single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory, md):
 
     print('running', ray_datenum)
 
@@ -28,8 +28,9 @@ def single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory
     ray_inpfile = os.path.join(ray_out_dir, 'ray_inpfile.txt')
 
     # Set config file for Ngo Model (Mode 1) -- see raytracer settings
-    modeldump(ray_datenum)
-    print('updated plasmasphere')
+    if md == 1: 
+        modeldump(ray_datenum,md)
+        print('updated plasmasphere')
 
     # Set config file for mode 3
     mode3_interpfile = os.path.join(project_root, 'precomputed_grids',
@@ -53,7 +54,8 @@ def single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory
     cwd = os.getcwd()
     os.chdir(raytracer_dir)
 
-    for mode in modes_to_do:
+    md = [md]
+    for mode in md:
 
         # Set output file path
         ray_outfile = os.path.join(ray_out_dir, 'ray_out_mode%d.ray' % mode)
@@ -90,7 +92,7 @@ def single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory
             damp_mode = 1
 
             ray_cmd = base_cmd + ' --gcpm_kp=%g' % (Kp)
-            #damp_cmd = base_damp_cmd + ' --mode %d' % damp_mode
+            damp_cmd = base_damp_cmd + ' --mode %d' % damp_mode
 
         if mode == 3:
             # Test the uniformly-sampled GCPM model
@@ -118,6 +120,13 @@ def single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory
 
             ray_cmd = base_cmd + ' --MLT="%g" --fixed_MLT=%g --kp=%g' % (MLT, fixed_MLT, Kp)
             damp_cmd = base_damp_cmd + ' --mode %d' % damp_mode
+        
+        if mode == 7:
+            # Test the difusive equilibrium model from ARFL
+            damp_mode = 1
+
+            ray_cmd = base_cmd + ' --gcpm_kp=%g' % (Kp)
+            damp_cmd = base_damp_cmd + ' --mode %d' % damp_mode
 
         # Run it!
 
@@ -129,8 +138,8 @@ def single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory
 
         #print("------- Running damping, mode %d -------" % damp_mode)
 
-        print(damp_cmd)
-        os.system(damp_cmd)
+        #print(damp_cmd)
+        #os.system(damp_cmd)
 
     # Move back to the working directory
     os.chdir(cwd)
