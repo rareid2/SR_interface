@@ -6,6 +6,8 @@ from convert_coords import convert2
 from run_rays import single_run_rays, parallel_run_rays
 from raytracer_utils import read_rayfile
 import PyGeopack as gp
+from random import randrange, uniform
+import matplotlib.pyplot as plt
 
 # uses PyGeopack (same as raytracer but its still a lil diff)
 # pos MUST be in SM car in m
@@ -56,7 +58,7 @@ def getBline(pos, ray_datenum,stopalt):
 # a helper func to run a ray to get the most accuarate Bfield 
 # use for defining wavenormals
 
-def getBdir(ray_start, ray_datenum, rayfile_directory, thetas, phis, md):
+def getBdir(ray_start, ray_datenum, rayfile_directory, thetas, phis, md, select_random=False):
     positions = ray_start
     directions = [(0,0,0)]
     freqs = [5e3]
@@ -83,17 +85,61 @@ def getBdir(ray_start, ray_datenum, rayfile_directory, thetas, phis, md):
     # now we have Bunit in SM car
     # let's put it in spherical (easier for changing the wavenormal)
     sph_dir = convert2([Bunit], ray_datenum, 'SM', 'car', ['Re','Re','Re'], 'SM', 'sph', ['Re','deg','deg'])     
-    
-    converted_dirs = []
-    # add theta and phi
-    for theta, phi in zip(thetas,phis):
-        new_dir = [sph_dir[0][0],sph_dir[0][1]+theta, sph_dir[0][2]+phi]
-        converted_dir = convert2([new_dir], ray_datenum, 'SM', 'sph', ['Re','deg','deg'], 'SM', 'car', ['Re','Re','Re']) 
-        converted_dirs.append(converted_dir[0])
 
     # also return resonance angle, can be useful for initializing rays
     from ray_plots import stix_parameters
     R, L, P, S, D = stix_parameters(r, 0, r['w']) # get stix params for initial time point
     resangle = np.arctan(np.sqrt(-P/S))
+    
+    converted_dirs = []
+    # if select random was chosen, thetas and phis are passed in as list of zeros of length nrays
+    if select_random == True:
+        nrays = len(thetas)
+        hemi_mult = thetas[0]
+        thetas = []
+        phis = []
+        resangle_deg = resangle *180/np.pi
+
+        for n in range(0,nrays):
+            # sample theta as concentric circles around the z axis, max at resonance angle
+            thetas.append((random.random()*resangle_deg))
+            # uniform azimuth around the z axis
+            phis.append(random.random()*360)
+
+        if Bunit[0] == 0 or Bunit[2] == 0:
+            r1 = [1,(-1*Bunit[0]-Bunit[2])/Bunit[1],1]
+        else:
+            r1 = [1,1,(-1*Bunit[1]-Bunit[0])/Bunit[2]]
+
+        r1 = np.array(r1)/np.linalg.norm(np.array(r1))
+        r2  = np.cross(r1,Bunit)
+        T_rotate = np.column_stack((r1,r2,Bunit))
+
+        #ax = plt.axes(projection='3d')
+        for th,ph in zip(thetas,phis):
+            r = 1/(np.cos(th*D2R))
+            cone_vec = np.array([r*np.sin(th*D2R)*np.cos(ph*D2R),r*np.sin(th*D2R)*np.sin(ph*D2R),r*np.cos(th*D2R)]) 
+            cone_vec = np.matmul(T_rotate,np.transpose(cone_vec))
+            if hemi_mult == 180:
+                zsign = -1
+            else:
+                zsign = 1
+
+            cone_vec = cone_vec/np.linalg.norm(cone_vec)
+            converted_dirs.append(cone_vec)
+
+        #    ax.plot3D([0,cone_vec[0]], [0,cone_vec[1]], [0,zsign*cone_vec[2]])
+        #Bunit = 5*Bunit
+        #ax.plot3D([0,Bunit[0]],[0,Bunit[1]],[0,Bunit[2]],'k')
+        #plt.show()
+        #plt.close()
+
+    # add theta and phi
+    else:
+        for theta, phi in zip(thetas,phis):
+            new_dir = [sph_dir[0][0],sph_dir[0][1]+theta, sph_dir[0][2]+phi]
+            converted_dir = convert2([new_dir], ray_datenum, 'SM', 'sph', ['Re','deg','deg'], 'SM', 'car', ['Re','Re','Re']) 
+            
+            converted_dirs.append(converted_dir[0])
 
     return converted_dirs, resangle # returns unit vector of directions corresponding to input theta and phi vals
