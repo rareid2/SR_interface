@@ -14,6 +14,11 @@ from convert_coords import convert2
 from raytracer_utils import read_rayfile,readdump, get_yearmiliday 
 from bfield import getBline
 
+def open_dampfile(fname):
+    f = open(fname)
+    for line in f:
+        print(line)
+
 #---------------------------------------------------------------------------
 def rotateplane(rc, tvec_datetime, crs, carsph, units):
     # rotate to be at prime meridian for plotting purposes
@@ -50,36 +55,32 @@ def get_Lshells(lshells, tvec_datetime, crs, carsph, units):
     return Lshell_fline
 #---------------------------------------------------------------------------
 
-def get_plasmasphere():
-    # need to figure out how to change this coordinate system! TODO!
-    path2plasma = '/modeldumps/'
-    plasma_model_dump = os.path.join(path2plasma, 'model_dump_mode_1_XZ.dat')
-    d_xz = readdump(plasma_model_dump)
-    Ne_xz = d_xz['Ns'][0, :, :, :].squeeze().T * 1e-6
-    Ne_xz[np.isnan(Ne_xz)] = 0
-
-    # Axis spacing depends on how the modeldump was ran
-    psize = 10
-    px = np.linspace(-10, 10, 200)
-    py = np.linspace(-10, 10, 200)
-
-    # Colorbar limits (log space)
-    clims = [-2, 5]
-
-    # Plot background plasma (equatorial slice)
-    g = plt.pcolormesh(px, py, np.log(Ne_xz), cmap = 'twilight')
-    #fig.colorbar(g, ax=ax, orientation="horizontal", pad = 0.2, label= 'Plasmasphere density')
-
 #---------------------------------------------------------------------------
-def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, md, plot_kvec=False, show_plot=True):
+def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, md, plot_kvec=False, show_plot=True, plot_density=False,damping_vals=None,theta_file=None):
 
     # ONLY suports cartesian plotting!
 
     # convert to desired coordinate system into vector list rays
     ray_coords = []
     k_coords = []
-    for r in raylist:
+
+    if theta_file:
+        f=open(theta_file)
+        thetas_save = []
+        for line in f:
+            thetas_save.append(float(line))
+            
+        f.close()
+    else:
+        thetas_save = np.zeros(len(raylist))
+        
+    ra = thetas_save[-1]
+
+    ray_count = 0
+    weights = []
+    for r,th in zip(raylist,thetas_save):
         w = r['w']
+        ray_count+=1
 
         # comes in as SM car in m 
         tmp_coords = list(zip(r['pos'].x, r['pos'].y, r['pos'].z))
@@ -95,13 +96,11 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, md, plot_kv
         # save it
         ray_coords.append(new_coords)
         k_coords.append(new_kcoords)
-        
+        weights.append(np.ones(len(new_coords))*th/ra)
+    weights = [item for sublist in weights for item in sublist]
     # -------------------------------- PLOTTING --------------------------------
-    # flatten
-    ray_coords = ray_coords[0]
-    k_coords = k_coords[0]
 
-    ray1 = ray_coords[0]
+    ray1 = ray_coords[0][0]
     ray1_sph = convert2([ray1], tvec_datetime, crs, carsph, units, 'GEO', 'sph', ['m','deg','deg'])
 
     # find ray starting long
@@ -123,9 +122,14 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, md, plot_kv
         plt.savefig(ray_out_dir+'/ccrs_proj.png')
         plt.close()
 
+        import matplotlib.patches as patches
+        import matplotlib.cbook as cbook
+
         img = plt.imread(ray_out_dir+'/ccrs_proj.png', format='png')
         fig, ax = plt.subplots(figsize=(6,6))
-        ax.imshow(img, extent=[-1.62,1.62,-1.3,1.3]) # not the most scientific
+        im = ax.imshow(img, extent=[-1.62,1.62,-1.3,1.3],zorder=2) # not the most scientific
+        patch = patches.Circle((0, 0), radius=1.02, transform=ax.transData)
+        im.set_clip_path(patch)
 
     except:
         fig, ax = plt.subplots(figsize=(6,6))
@@ -136,23 +140,26 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, md, plot_kv
 
     # plot the rays and kvec
     rotated_rcoords = []
-    rotated_kcoords = []
-    for rc, kc in zip(ray_coords, k_coords):
-        rotated = rotateplane([rc], tvec_datetime, crs, carsph, units)
-        rotated_rcoords.append(rotated[0])
-        
-        rotatedk = rotateplane([kc], tvec_datetime, crs, carsph, units)
-        rotated_kcoords.append(rotatedk[0])
+    #rotated_kcoords = []
+
+    for rayc in ray_coords:
+        for rc in rayc:
+            rotated = rotateplane([rc], tvec_datetime, crs, carsph, units)
+            rotated_rcoords.append(rotated[0])
+            
+            #rotatedk = rotateplane([kc], tvec_datetime, crs, carsph, units)
+            #rotated_kcoords.append(rotatedk[0])
 
     # repack in x,y,z
+
     rotated_rcoords_x = [rcs[0] for rcs in rotated_rcoords]
     rotated_rcoords_y = [rcs[1] for rcs in rotated_rcoords]
     rotated_rcoords_z = [rcs[2] for rcs in rotated_rcoords]
 
     # same for k
-    kc_x = [kcs[0] for kcs in rotated_kcoords]
-    kc_y = [kcs[1] for kcs in rotated_kcoords]
-    kc_z = [kcs[2] for kcs in rotated_kcoords]
+    #kc_x = [kcs[0] for kcs in rotated_kcoords]
+    #kc_y = [kcs[1] for kcs in rotated_kcoords]
+    #kc_z = [kcs[2] for kcs in rotated_kcoords]
 
     if plot_kvec:
         int_plt = len(rotated_rcoords_x)//10
@@ -161,6 +168,42 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, md, plot_kv
         
         for ii,i in enumerate(range(0,len(rotated_rcoords), int_plt)): # not the prettiest but it will work, just trying to annoate
             ax.text(rotated_rcoords_x[i]-0.1, rotated_rcoords_z[i]-0.1, str(ii))
+    if plot_density:
+        # plot start point as star
+        ax.scatter(rotated_rcoords_x[0], rotated_rcoords_z[0], c = 'Red', s=15, marker ='*',zorder=3)
+        binnum = 40
+        binlon = np.linspace(0,4,num=binnum)
+        binlat = np.linspace(-2,2,num=binnum)
+        cmap = plt.cm.get_cmap('Blues')
+        #reverse_cmap = cmap.reversed()
+
+        # finalizes weights
+        # now weighted by max wavenormal angle and landau damping!
+
+        new_weights = []
+        for nw,nd in zip(weights,damping_vals):
+            new_weights.append(nw*nd)
+        import matplotlib as mpl 
+        h=ax.hist2d(rotated_rcoords_x, rotated_rcoords_z,bins = [np.array(binlon),np.array(binlat)],weights=new_weights,norm=mpl.colors.LogNorm(vmin=10,vmax=ray_count),cmap=cmap)
+
+        # go through each ray
+        """
+        newh = np.zeros_like(h[0])
+        prev_xedge = 0
+        prev_yedge = -2
+        for xi,x_edge in enumerate(h[1]):
+            for yi,y_edge in enumerate(h[2]):
+                for ind, (rx,rz) in enumerate(zip(rotated_rcoords_x,rotated_rcoords_z)):
+                    if rx >= prev_xedge and rx < x_edge and rz >= prev_yedge and rz < y_edge:
+                        newh[xi-1,yi-1] += 1*damping_vals[ind]
+                prev_yedge = y_edge
+            prev_xedge = x_edge
+        """
+        # testing confirms these match up
+        # each ray is scaled by the appropriate damping val
+        # next need to divide by starting 
+
+        cbar = fig.colorbar(h[3], ax=ax,shrink=0.8)
     else:
         ax.scatter(rotated_rcoords_x[0], rotated_rcoords_z[0], c = 'Blue', s=10)
         ax.scatter(rotated_rcoords_x, rotated_rcoords_z, c = 'Black', s = 1, zorder = 103)
@@ -444,3 +487,49 @@ def plotNe(ray_datenum, raylist, ray_out_dir, crs, carsph, units, show_plot=True
     plt.ylabel('log(density)')
     plt.show()
     plt.close()
+
+# --------------------------------------------------------------------------------------
+
+def plot_plasmasphere(md):
+    fig, ax = plt.subplots(1,1)
+
+    model_path = 'modeldumps/'
+    plasma_model_dump = os.path.join(model_path, 'model_dump_mode_'+str(md)+'_XY.dat')
+    d_xy = readdump(plasma_model_dump)
+    plasma_model_dump = os.path.join(model_path, 'model_dump_mode_'+str(md)+'_XZ.dat')
+    d_xz = readdump(plasma_model_dump)
+    plasma_model_dump = os.path.join(model_path, 'model_dump_mode_'+str(md)+'_YZ.dat')
+    d_yz = readdump(plasma_model_dump)
+    Ne_xy = d_xy['Ns'][0,:,:,:].squeeze().T
+    Ne_xy[np.isnan(Ne_xy)] = 0
+    Ne_xz = d_xz['Ns'][0,:,:,:].squeeze().T
+    Ne_xz[np.isnan(Ne_xz)] = 0
+    Ne_yz = d_yz['Ns'][0,:,:,:].squeeze().T
+    Ne_yz[np.isnan(Ne_yz)] = 0
+
+    # Axis spacing depends on how the modeldump was ran
+    psize = 10
+    px = np.linspace(-10, 10, 200)
+    py = np.linspace(-10, 10, 200)
+
+    # Colorbar limits (log space)
+    clims = [-2, 5]
+
+    # Plot background plasma 
+    g = plt.pcolormesh(px, py, np.log10(Ne_xy), vmin=5,vmax=11, cmap = 'jet')
+
+    fig.colorbar(g, orientation="horizontal", pad = 0.1, label= 'Plasmasphere density #/m^3')
+    earth = plt.Circle((0,0),1,color='k',alpha=1, zorder=100)
+    ax.add_patch(earth)   
+    plt.ylim([-5,5])
+    plt.xlim([-8,8])
+    ax.set_aspect('equal')
+
+    plt.show()
+    plt.close()
+
+
+
+plot_plasmasphere(6)
+plot_plasmasphere(1)
+plot_plasmasphere(7)

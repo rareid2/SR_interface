@@ -127,9 +127,7 @@ def getBdir(ray_start, ray_datenum, rayfile_directory, thetas, phis, md, select_
 
             cone_vec = cone_vec/np.linalg.norm(cone_vec)
             converted_dirs.append(cone_vec)
-
-        #    ax.plot3D([0,cone_vec[0]], [0,cone_vec[1]], [0,zsign*cone_vec[2]])
-        #Bunit = 5*Bunit
+            #ax.plot3D([0,cone_vec[0]], [0,cone_vec[1]], [0,zsign*cone_vec[2]])
         #ax.plot3D([0,Bunit[0]],[0,Bunit[1]],[0,Bunit[2]],'k')
         #plt.show()
         #plt.close()
@@ -142,4 +140,4 @@ def getBdir(ray_start, ray_datenum, rayfile_directory, thetas, phis, md, select_
             
             converted_dirs.append(converted_dir[0])
 
-    return converted_dirs, resangle # returns unit vector of directions corresponding to input theta and phi vals
+    return converted_dirs, resangle, thetas, phis # returns unit vector of directions corresponding to input theta and phi vals

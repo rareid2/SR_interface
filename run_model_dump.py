@@ -337,6 +337,7 @@ def modeldump(ray_datenum,md):
   os.chdir(raytracer_dir)
 
   mag_dump = False  # True for mag dipole coords, false for SM
+  # dont use this
 
   # generate config file for set Kp
   gen_ngofile(Kp, configfile)
@@ -425,7 +426,7 @@ def modeldump(ray_datenum,md):
               cmd += ' --kp=%g ' % (Kp)
               if mag_dump:
                   cmd += ' --mag_coords=1 '
-          #print(cmd)
+
 
           os.system(cmd)
 

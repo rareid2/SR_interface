@@ -72,9 +72,10 @@ ray_start = SM_tx
 thetas = [-180]
 
 # what mode to run? see constants settings for descriptions
-md = 1
+# only mds 1,6,7 currently working
+md = 7
 
-directions, ra = getBdir(ray_start, ray_datenum, rayfile_directory, thetas,np.zeros(len(thetas)),md)
+directions, ra, thetas, phis = getBdir(ray_start, ray_datenum, rayfile_directory, thetas,np.zeros(len(thetas)),md)
 
 # run at a single time -- use run_rays and input a list of positions, directions, and freqs (ALL SAME LENGTH)
 # generates one input file and one output file with all rays in it

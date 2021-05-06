@@ -27,10 +27,7 @@ def single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory
     # Set input file path
     ray_inpfile = os.path.join(ray_out_dir, 'ray_inpfile.txt')
 
-    # Set config file for Ngo Model (Mode 1) -- see raytracer settings
-    if md == 1: 
-        modeldump(ray_datenum,md)
-        print('updated plasmasphere')
+    modeldump(ray_datenum,md)
 
     # Set config file for mode 3
     mode3_interpfile = os.path.join(project_root, 'precomputed_grids',
@@ -115,7 +112,7 @@ def single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory
         if mode == 6:
             # Test the Simplified GCPM model
             MLT = 0
-            fixed_MLT = 1  # Force the raytracer to stay in the meridonal plane?
+            fixed_MLT = 0  # Force the raytracer to stay in the meridonal plane?
             damp_mode = 0
 
             ray_cmd = base_cmd + ' --MLT="%g" --fixed_MLT=%g --kp=%g' % (MLT, fixed_MLT, Kp)

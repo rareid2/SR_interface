@@ -13,13 +13,20 @@ OR
 (depends on your system)
 
 next to download packages, run the following lines (requirements txt keeps breaking w spacepy):   
-```pip install numpy```  
-```pip install matplotlib```  
-```pip install spacepy```  
-```pip install requests```  
-```pip install sgp4```  
-```pip install pandas```  
+```pip3 install numpy```  
+```pip3 install matplotlib```  
+```pip3 install spacepy```  
+```pip3 install requests```  
+```pip3 install sgp4```  
+```pip3 install pandas```
+```pip3 install PyGeopack```  
 
+We also need to make sure the libxformd folder is installed correctly. This folder ensures the coordinate transformations are identical to those used in the raytracer. Use the following:
+```cd libxformd```
+```cd xform_double```
+```make clean```
+```make```
+```make shared```
 
 Next, make sure you have the folder modeldumps  
 ```mkdir modeldumps```  
@@ -33,10 +40,9 @@ The run call is:
 ## to run with cartopy   
 If you want cartopy (this will work fine w/o it) visit https://scitools.org.uk/cartopy/docs/latest/ and make sure you have the required dependecies first. 
 Next run:  
-```pip install cartopy``` 
+```pip3 install cartopy``` 
 
 we need to clean up the version of shapely -- it breaks cartopy sometimes  
 Run the following lines  
-```pip uninstall shapely```  
-```pip install shapely --no-binary shapely```  
-python3 -c "import pyglow; pyglow.update_indices(2019,2020)" 
+```pip3 uninstall shapely```  
+```pip3 install shapely --no-binary shapely```  
