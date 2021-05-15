@@ -61,7 +61,7 @@ def getBline(pos, ray_datenum,stopalt):
 def getBdir(ray_start, ray_datenum, rayfile_directory, thetas, phis, md, select_random=False):
     positions = ray_start
     directions = [(0,0,0)]
-    freqs = [5e3]
+    freqs = [15e3]
 
     single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory, md)
 
@@ -72,7 +72,7 @@ def getBdir(ray_start, ray_datenum, rayfile_directory, thetas, phis, md, select_
     # create empty lists to fill with ray files and damp files
     raylist = []
     for filename in file_titles:
-        if '.ray' in filename:
+        if '.ray' in filename and str(md) in filename:
             raylist += read_rayfile(os.path.join(ray_out_dir, filename))
 
     for r in raylist:

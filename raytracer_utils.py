@@ -222,3 +222,26 @@ def readdump(filename):
     out['z'] = np.linspace(minz, maxz, nz)
     
     return out
+
+def read_input_jobs(fname):
+    f = open(fname)
+    lats = []
+    lons = []
+    psds = []
+    for line in f:
+        lines = line.split()
+        lons.append(float(lines[0]))
+        lats.append(float(lines[1]))
+        psds.append(float(lines[2]))
+    return lats, lons, psds
+
+def read_damp_matlab(fname):
+    f = open(fname)
+    damp_data = []
+    for line in f:
+        lines = line.split()
+        if lines[0] == 't':
+            continue
+        else:
+            damp_data.append(float(lines[1]))
+    return damp_data

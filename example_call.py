@@ -69,7 +69,7 @@ ray_start = SM_tx
 
 # returns a vector of directions (thetas and phis must be same length) 
 # theta = 0 goes north, theta=180 goes south
-thetas = [-180]
+thetas = [-180 for i in range(1)]
 
 # what mode to run? see constants settings for descriptions
 # only mds 1,6,7 currently working
@@ -121,7 +121,7 @@ for filename in file_titles:
         dd = read_damp_simple(os.path.join(ray_out_dir, filename)) 
         damplist.append(dd)
 
-plotray2D(ray_datenum, raylist, ray_out_dir, 'GEO', 'car', ['Re','Re','Re'],md)
+#plotray2D(ray_datenum, raylist, ray_out_dir, 'GEO', 'car', ['Re','Re','Re'],md)
 #plotrefractivesurface(ray_datenum, raylist[0], ray_out_dir)
 
 #plotgeomfactor(ray_datenum, raylist, ray_out_dir, 'GEO', 'sph', units=['Re','deg','deg'])

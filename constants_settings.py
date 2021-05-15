@@ -24,7 +24,7 @@ raytracer_dir = '/home/rileyannereid/workspace/Stanford_Raytracer/bin'
 
 #  --------------------------- CHANGE ENV SETTINGS HERE  --------------------------
 # Environmental parameters
-Kp = 2
+Kp = 5
 AE = 1.6
 Pdyn = 4
 Dst = 1.0
@@ -34,7 +34,7 @@ BzIMF = -5
 W = [0.132, 0.303, 0.083, 0.070, 0.211, 0.308]  # Doesn't matter if we're not using Tsyg
 
 # Simulation parameters
-t_max = 10        # Maximum duration in seconds
+t_max = 20       # Maximum duration in seconds
 dt0 = 1e-3       # Initial timestep in seconds
 dtmax = 0.1      # Maximum allowable timestep in seconds
 root = 2         # Which root of the Appleton-Hartree equation
@@ -42,7 +42,7 @@ root = 2         # Which root of the Appleton-Hartree equation
                  # (2 = whistler in magnetosphere)
 fixedstep = 0    # Don't use fixed step sizes, that's a bad idea.
 maxerr = 5.0e-4  # Error bound for adaptive timestepping
-maxsteps = 2e3   # Max number of timesteps (abort if reached)
+maxsteps = 3e3   # Max number of timesteps (abort if reached)
 use_IGRF = 1     # Magnetic field model (1 for IGRF, 0 for dipole)
 use_tsyg = 1     # Use the Tsyganenko magnetic field model corrections
 minalt = R_E + 475e3   # cutoff altitude in meters
