@@ -73,7 +73,7 @@ thetas = [-180 for i in range(1)]
 
 # what mode to run? see constants settings for descriptions
 # only mds 1,6,7 currently working
-md = 7
+md = 1
 
 directions, ra, thetas, phis = getBdir(ray_start, ray_datenum, rayfile_directory, thetas,np.zeros(len(thetas)),md)
 

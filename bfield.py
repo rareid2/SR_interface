@@ -102,7 +102,7 @@ def getBdir(ray_start, ray_datenum, rayfile_directory, thetas, phis, md, select_
 
         for n in range(0,nrays):
             # sample theta as concentric circles around the z axis, max at resonance angle
-            thetas.append((random.random()*resangle_deg))
+            thetas.append((random.random()*(resangle_deg-3)))
             # uniform azimuth around the z axis
             phis.append(random.random()*360)
 
@@ -126,7 +126,7 @@ def getBdir(ray_start, ray_datenum, rayfile_directory, thetas, phis, md, select_
                 zsign = 1
 
             cone_vec = cone_vec/np.linalg.norm(cone_vec)
-            converted_dirs.append(cone_vec)
+            converted_dirs.append(zsign*cone_vec)
             #ax.plot3D([0,cone_vec[0]], [0,cone_vec[1]], [0,zsign*cone_vec[2]])
         #ax.plot3D([0,Bunit[0]],[0,Bunit[1]],[0,Bunit[2]],'k')
         #plt.show()

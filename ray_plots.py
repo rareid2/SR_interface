@@ -73,9 +73,9 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, md, plot_kv
     root = -1 # whistler solution
 
     # Solve the cold plasma dispersion relation
-    # subtract 1 to avoid infinity index of refr.
-    cos2phi = pow(np.cos(resangle-(1*D2R)),2)
-    sin2phi = pow(np.sin(resangle-(1*D2R)),2)
+    # subtract 3 to avoid infinity index of refr. and match the initialization at bfield script
+    cos2phi = pow(np.cos(resangle-(3*D2R)),2)
+    sin2phi = pow(np.sin(resangle-(3*D2R)),2)
 
     A = S*sin2phi + P*cos2phi
     B = R*L*sin2phi + P*S*(1.0+cos2phi)
@@ -205,7 +205,8 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, md, plot_kv
         cmap = plt.cm.get_cmap('Blues')
 
         # finalizes weights
-        new_weights = []
+        #new_weights = []
+
         #for nw,nd in zip(weights,damping_vals):
         #    new_weights.append(nw*nd)
 
@@ -552,13 +553,13 @@ def plot_plasmasphere(md):
     plt.show()
     plt.close()
 
-def plot_plasmasphere_single(mds):
+def plot_plasmasphere_single(md):
     fig, ax = plt.subplots(1,1)
 
     model_path = 'modeldumps/'
-    for md in mds:
-    #for kp in [1,3,5]:
-        kp=1
+    #for md in mds:
+    for kp in [0,4]:
+        #kp=1
         print(kp)
         plasma_model_dump = os.path.join(model_path, 'model_dump_mode_'+str(md)+'_XY_'+str(kp)+'.dat')
         d_xy = readdump(plasma_model_dump)
@@ -584,12 +585,12 @@ def plot_plasmasphere_single(mds):
         # Plot background plasma 
         plt.plot(px,np.log10(Ne_xz[99,:]),label=kp)
 
-    plt.xlim([1,5])
-    plt.ylim([0,15])
+    plt.xlim([0,5])
+    plt.ylim([6,12])
 
     plt.legend()
 
     plt.show()
     plt.close()
 
-plot_plasmasphere_single([1,6,7])
+#plot_plasmasphere_single(1)

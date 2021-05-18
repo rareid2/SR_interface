@@ -24,7 +24,7 @@ raytracer_dir = '/home/rileyannereid/workspace/Stanford_Raytracer/bin'
 
 #  --------------------------- CHANGE ENV SETTINGS HERE  --------------------------
 # Environmental parameters
-Kp = 5
+Kp = 2
 AE = 1.6
 Pdyn = 4
 Dst = 1.0
