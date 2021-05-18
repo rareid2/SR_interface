@@ -5,7 +5,7 @@ from constants_settings import *
 from convert_coords import convert2
 from run_rays import single_run_rays, parallel_run_rays
 from raytracer_utils import read_rayfile
-import PyGeopack as gp
+#import PyGeopack as gp
 from random import randrange, uniform
 import matplotlib.pyplot as plt
 

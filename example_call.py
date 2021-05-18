@@ -5,7 +5,10 @@ import os
 from constants_settings import *
 from convert_coords import convert2
 from satellites import sat
-from transmitters import vlf_tx
+
+# probably just going to delete the transmitters 
+#from transmitters import vlf_tx
+
 from bfield import getBdir
 from run_rays import single_run_rays, parallel_run_rays
 from raytracer_utils import read_rayfile, read_damp_simple
@@ -15,7 +18,7 @@ import matplotlib.pyplot as plt
 
 # example call to ray tracer!
 # ----------------------------- set up ------------------------------------------
-rayfile_directory = '/home/rileyannereid/workspace/SR_output' # store output here
+rayfile_directory = '/Users/rileyannereid/macworkspace/SR_output' # store output here
 
 # FIRST, navigate to constants_settings and make sure the settings are correct for the run
 
@@ -121,7 +124,7 @@ for filename in file_titles:
         dd = read_damp_simple(os.path.join(ray_out_dir, filename)) 
         damplist.append(dd)
 
-#plotray2D(ray_datenum, raylist, ray_out_dir, 'GEO', 'car', ['Re','Re','Re'],md)
+plotray2D(ray_datenum, raylist, ray_out_dir, 'GEO', 'car', ['Re','Re','Re'],md)
 #plotrefractivesurface(ray_datenum, raylist[0], ray_out_dir)
 
 #plotgeomfactor(ray_datenum, raylist, ray_out_dir, 'GEO', 'sph', units=['Re','deg','deg'])

@@ -234,15 +234,15 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, md, plot_kv
         ax.scatter(rotated_rcoords_x, rotated_rcoords_z, c = 'Black', s = 1, zorder = 103)
 
     # plot field lines (from IGRF13 model)
-    L_shells = [2, 3, 4]  # Field lines to draw
-    Lshell_flines = get_Lshells(L_shells, tvec_datetime, crs, carsph, units)
+    #L_shells = [2, 3, 4]  # Field lines to draw
+    #Lshell_flines = get_Lshells(L_shells, tvec_datetime, crs, carsph, units)
     
-    for lfline in Lshell_flines:
-        ax.plot(lfline[0], lfline[1], color='Black', linewidth=1, linestyle='dashed')
+    #for lfline in Lshell_flines:
+    #    ax.plot(lfline[0], lfline[1], color='Black', linewidth=1, linestyle='dashed')
 
     plt.xlabel('L (R$_E$)')
     plt.ylabel('L (R$_E$)')
-    plt.xlim([0, max(L_shells)])
+    # plt.xlim([0, max(L_shells)])
     plt.ylim([-2, 2])
     plt.title(dt.datetime.strftime(ray_datenum, '%Y-%m-%d %H:%M:%S') + ' ' + str(round(w/(1e3*np.pi*2), 1)) + 'kHz')
     plt.savefig(ray_out_dir + '/' + dt.datetime.strftime(ray_datenum, '%Y_%m_%d_%H%M%S') + '_' + str(round(w/(1e3*np.pi*2), 1)) + 'kHz' +'_2Dview' + str(md) + '.png')
