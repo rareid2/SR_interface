@@ -1,7 +1,7 @@
+# import packages needed
 import numpy as np
 import pandas as pd
 import os
-
 
 def get_yearmiliday(ray_datenum):
     # convert for raytracer settings for convenience

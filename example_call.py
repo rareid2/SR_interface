@@ -1,23 +1,16 @@
 import numpy as np
 import datetime as dt
 import os
-
 from constants_settings import *
 from convert_coords import convert2
 from satellites import sat
-
-# probably just going to delete the transmitters 
-#from transmitters import vlf_tx
-
 from bfield import getBdir
 from run_rays import single_run_rays, parallel_run_rays
 from raytracer_utils import read_rayfile, read_damp_simple
-from ray_plots import plotray2D, plotrefractivesurface, plot_damp, plotgeomfactor, stix_parameters, plotNe
-
-import matplotlib.pyplot as plt
+from ray_plots import plotray2D
 
 # example call to ray tracer!
-# ----------------------------- set up ------------------------------------------
+# --------------------------------------- set up ------------------------------------------
 rayfile_directory = '/Users/rileyannereid/macworkspace/SR_output' # store output here
 
 # FIRST, navigate to constants_settings and make sure the settings are correct for the run
@@ -38,58 +31,30 @@ dsx.propagatefromTLE(sec=0, orbit_dir='future', crs='SM', carsph='car', units=['
 # now we have ray start point in the correct coordinates (SM cartesian in m)
 ray_start = dsx.pos
 
-# if you wanted to launch from a TX instead, use the TX class and use:
-"""
-# first, where is the transmitter on earth -- set crs carsph units to be input and output
-# RIGHT NOW, ONLY SUPPORTS GEO SPH COORDS IN RE, DEG, DEG
-crs='GEO'
-carsph='sph'
-units=['Re','deg','deg'] 
-tx_loc = [1, 33.2385, -106.3464] # set location
-
-# call tx class
-wsmr = vlf_tx()
-wsmr.time = ray_datenum
-wsmr.pos = tx_loc
-wsmr.freq = 14.1e3
-
-# find position traced up fieldline -- first argument is altitude in km above earths surface
-# tx crs traced is the fieldline, traced pos is the position at requested altitude
-tx_crs_traced, traced_pos = wsmr.tracepos_up_fieldline(1000,crs,carsph,units)
-# convert to SM 
-SM_tx = convert2([traced_pos],[wsmr.time],crs,carsph,units,'SM','car',['m','m','m'])
-ray_start = SM_tx
-# finally, check out get_dist for defining a guassian of positions to launch rays at this location
-"""
-
-# next, define the direction of the ray
-# this step will actually run the raytracer to sample the Bfield correctly
-# returns the Bfield unit vector at the start point in SM car
-
-# thetas and phis are vectors corresponding to starting directions
-# theta = increases the polar angle
-# phi = increases the azimuth angle
-
-# returns a vector of directions (thetas and phis must be same length) 
-# theta = 0 goes north, theta=180 goes south
-thetas = [-180 for i in range(1)]
-
 # what mode to run? see constants settings for descriptions
 # only mds 1,6,7 currently working
 md = 1
 
-directions, ra, thetas, phis = getBdir(ray_start, ray_datenum, rayfile_directory, thetas,np.zeros(len(thetas)),md)
+# how many rays? 
+nrays = 10 # how many rays -- THIS MUST BE EQUAL IN LENGTH TO THETAS
+
+# next, define the direction of the ray
+# this step will actually run the raytracer to sample the Bfield correctly
+# theta = 0 goes north, theta=180 goes south
+thetas = [-180 for i in range(nrays)] # go south
+directions, ra, thetas, phis = getBdir(ray_start, ray_datenum, rayfile_directory, thetas, np.zeros(len(thetas)), md)
 
 # run at a single time -- use run_rays and input a list of positions, directions, and freqs (ALL SAME LENGTH)
 # generates one input file and one output file with all rays in it
 
-nrays = len(thetas) # how many rays -- THIS MUST BE EQUAL IN LENGTH TO THETAS AND PHIS
 freq = 8.2e3  # Hz
 
 # simplest call
 positions = [ray_start[0] for n in range(nrays)]
 freqs = [freq for n in range(nrays)]
 
+
+# --------------------------------------- run ---------------------------------------------
 # time to run is about 1 sec every 10 rays 
 single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory,md)
 
@@ -124,10 +89,6 @@ for filename in file_titles:
         dd = read_damp_simple(os.path.join(ray_out_dir, filename)) 
         damplist.append(dd)
 
-plotray2D(ray_datenum, raylist, ray_out_dir, 'GEO', 'car', ['Re','Re','Re'],md)
-#plotrefractivesurface(ray_datenum, raylist[0], ray_out_dir)
+plotray2D(ray_datenum, raylist, ray_out_dir, 'GEO', 'car', ['Re','Re','Re'], md)
 
-#plotgeomfactor(ray_datenum, raylist, ray_out_dir, 'GEO', 'sph', units=['Re','deg','deg'])
-#plot_damp(damplist, thetas, ray_out_dir)
-
-#plotNe(ray_datenum, raylist, ray_out_dir, 'GEO', 'sph', units=['Re','deg','deg'])
+# check plotting script for other plot options! (Ne, density, etc.)

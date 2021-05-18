@@ -62,7 +62,7 @@ def getBdir(ray_start, ray_datenum, rayfile_directory, thetas, phis, md, select_
     positions = ray_start
     directions = [(0,0,0)]
     freqs = [15e3]
-
+    # going to run a ray real quick
     single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory, md)
 
     # Load all the rayfiles in the output directory
@@ -75,6 +75,7 @@ def getBdir(ray_start, ray_datenum, rayfile_directory, thetas, phis, md, select_
         if '.ray' in filename and str(md) in filename:
             raylist += read_rayfile(os.path.join(ray_out_dir, filename))
 
+    # get b direction for this ray
     for r in raylist:
         B0 = [r['B0'].x[0], r['B0'].y[0], r['B0'].z[0]]
         # vec in T in SM car coordinates
@@ -132,7 +133,7 @@ def getBdir(ray_start, ray_datenum, rayfile_directory, thetas, phis, md, select_
         #plt.show()
         #plt.close()
 
-    # add theta and phi
+    # add theta and phi as desired
     else:
         for theta, phi in zip(thetas,phis):
             new_dir = [sph_dir[0][0],sph_dir[0][1]+theta, sph_dir[0][2]+phi]
