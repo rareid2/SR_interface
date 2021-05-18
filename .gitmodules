@@ -1,0 +1,3 @@
+[submodule "libxformd"]
+	path = libxformd
+	url = https://github.com/rareid2/libxformd
