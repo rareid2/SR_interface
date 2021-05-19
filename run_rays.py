@@ -1,15 +1,13 @@
 # import needed packages
 import numpy as np
 import os
-import sys
 import datetime as dt
 from multiprocessing import Pool, cpu_count
-
 from constants_settings import *
 from run_model_dump import modeldump
 from raytracer_utils import get_yearmiliday
 
-def single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory, md):
+def single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory, mode):
 
     print('running', ray_datenum)
 
@@ -27,7 +25,7 @@ def single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory
     # Set input file path
     ray_inpfile = os.path.join(ray_out_dir, 'ray_inpfile.txt')
 
-    modeldump(ray_datenum,md)
+    modeldump(ray_datenum, mode)
 
     # Set config file for mode 3
     mode3_interpfile = os.path.join(project_root, 'precomputed_grids',
@@ -51,92 +49,88 @@ def single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory
     cwd = os.getcwd()
     os.chdir(raytracer_dir)
 
-    md = [md]
-    for mode in md:
+    # Set output file path
+    ray_outfile = os.path.join(ray_out_dir, 'ray_out_mode%d.ray' % mode)
+    damp_outfile = os.path.join(ray_out_dir, 'ray_out_mode%d.damp' % mode)
 
-        # Set output file path
-        ray_outfile = os.path.join(ray_out_dir, 'ray_out_mode%d.ray' % mode)
-        damp_outfile = os.path.join(ray_out_dir, 'ray_out_mode%d.damp' % mode)
+    # The base command -- with parameters common for all modes
+    # what is outputper? 
+    base_cmd = './raytracer --outputper=%d --dt0=%g --dtmax=%g' % (1, dt0, dtmax) + \
+                ' --tmax=%g --root=%d --fixedstep=%d --maxerr=%g' % (t_max, root, fixedstep, maxerr) + \
+                ' --modelnum=%d --maxsteps=%d --minalt=%d --inputraysfile="%s"' % (
+                    mode, maxsteps, minalt, ray_inpfile) + \
+                ' --outputfile="%s" --yearday=%s --milliseconds_day=%d' % (ray_outfile, yearday, milliseconds_day) + \
+                ' --use_tsyganenko=%d --use_igrf=%d --tsyganenko_Pdyn=%g' % (use_tsyg, use_IGRF, Pdyn) + \
+                ' --tsyganenko_Dst=%g --tsyganenko_ByIMF=%g --tsyganenko_BzIMF=%g' % (Dst, ByIMF, BzIMF) + \
+                ' --tsyganenko_W1=%g --tsyganenko_W2=%g --tsyganenko_W3=%g' % (W[0], W[1], W[2]) + \
+                ' --tsyganenko_W4=%g --tsyganenko_W5=%g --tsyganenko_W6=%g' % (W[3], W[4], W[5])
 
-        # The base command -- with parameters common for all modes
-        # what is outputper? 
-        base_cmd = './raytracer --outputper=%d --dt0=%g --dtmax=%g' % (1, dt0, dtmax) + \
-                   ' --tmax=%g --root=%d --fixedstep=%d --maxerr=%g' % (t_max, root, fixedstep, maxerr) + \
-                   ' --modelnum=%d --maxsteps=%d --minalt=%d --inputraysfile="%s"' % (
-                       mode, maxsteps, minalt, ray_inpfile) + \
-                   ' --outputfile="%s" --yearday=%s --milliseconds_day=%d' % (ray_outfile, yearday, milliseconds_day) + \
-                   ' --use_tsyganenko=%d --use_igrf=%d --tsyganenko_Pdyn=%g' % (use_tsyg, use_IGRF, Pdyn) + \
-                   ' --tsyganenko_Dst=%g --tsyganenko_ByIMF=%g --tsyganenko_BzIMF=%g' % (Dst, ByIMF, BzIMF) + \
-                   ' --tsyganenko_W1=%g --tsyganenko_W2=%g --tsyganenko_W3=%g' % (W[0], W[1], W[2]) + \
-                   ' --tsyganenko_W4=%g --tsyganenko_W5=%g --tsyganenko_W6=%g' % (W[3], W[4], W[5])
+    
+    base_damp_cmd = './damping --inp_file "%s" --out_file "%s" ' % (ray_outfile, damp_outfile) + \
+                    ' --Kp %g --AE %g' % (Kp, AE) + \
+                    ' --yearday %s --msec %d' % (yearday, milliseconds_day) + \
+                    ' --geom_factor=%d' % include_geom_factor
+    
+    if mode == 1:
+        # Test the Ngo model
+        damp_mode = 0
 
-        
-        base_damp_cmd = './damping --inp_file "%s" --out_file "%s" ' % (ray_outfile, damp_outfile) + \
-                        ' --Kp %g --AE %g' % (Kp, AE) + \
-                        ' --yearday %s --msec %d' % (yearday, milliseconds_day) + \
-                        ' --geom_factor=%d' % include_geom_factor
-        
+        ray_cmd = base_cmd + ' --ngo_configfile="%s"' % (configfile)
+        damp_cmd = base_damp_cmd + ' --mode %d' % damp_mode
 
-        if mode == 1:
-            # Test the Ngo model
-            damp_mode = 0
+    if mode == 2:
+        # Test the full GCPM model
+        damp_mode = 1
 
-            ray_cmd = base_cmd + ' --ngo_configfile="%s"' % (configfile)
-            damp_cmd = base_damp_cmd + ' --mode %d' % damp_mode
+        ray_cmd = base_cmd + ' --gcpm_kp=%g' % (Kp)
+        damp_cmd = base_damp_cmd + ' --mode %d' % damp_mode
 
-        if mode == 2:
-            # Test the full GCPM model
-            damp_mode = 1
+    if mode == 3:
+        # Test the uniformly-sampled GCPM model
+        damp_mode = 1
 
-            ray_cmd = base_cmd + ' --gcpm_kp=%g' % (Kp)
-            damp_cmd = base_damp_cmd + ' --mode %d' % damp_mode
+        ray_cmd = base_cmd + ' --interp_interpfile="%s"' % (mode3_interpfile)
+        damp_cmd = base_damp_cmd + ' --mode %d' % damp_mode
 
-        if mode == 3:
-            # Test the uniformly-sampled GCPM model
-            damp_mode = 1
+    if mode == 4:
+        # Test the randomly-sampled GCPM model
+        damp_mode = 1
 
-            ray_cmd = base_cmd + ' --interp_interpfile="%s"' % (mode3_interpfile)
-            damp_cmd = base_damp_cmd + ' --mode %d' % damp_mode
+        ray_cmd = base_cmd + ' --interp_interpfile=%s' % (mode4_modelfile) + \
+                    ' --scattered_interp_window_scale=%d' % (scattered_interp_window_scale) + \
+                    ' --scattered_interp_order=%d' % (scattered_interp_order) + \
+                    ' --scattered_interp_exact=%d' % (scattered_interp_exact) + \
+                    ' --scattered_interp_local_window_scale=%d' % (scattered_interp_local_window_scale)
+        damp_cmd = base_damp_cmd + ' --mode %d' % damp_mode
 
-        if mode == 4:
-            # Test the randomly-sampled GCPM model
-            damp_mode = 1
+    if mode == 6:
+        # Test the Simplified GCPM model
+        MLT = 0
+        fixed_MLT = 0  # Force the raytracer to stay in the meridonal plane?
+        damp_mode = 0
 
-            ray_cmd = base_cmd + ' --interp_interpfile=%s' % (mode4_modelfile) + \
-                      ' --scattered_interp_window_scale=%d' % (scattered_interp_window_scale) + \
-                      ' --scattered_interp_order=%d' % (scattered_interp_order) + \
-                      ' --scattered_interp_exact=%d' % (scattered_interp_exact) + \
-                      ' --scattered_interp_local_window_scale=%d' % (scattered_interp_local_window_scale)
-            damp_cmd = base_damp_cmd + ' --mode %d' % damp_mode
+        ray_cmd = base_cmd + ' --MLT="%g" --fixed_MLT=%g --kp=%g' % (MLT, fixed_MLT, Kp)
+        damp_cmd = base_damp_cmd + ' --mode %d' % damp_mode
+    
+    if mode == 7:
+        # Test the difusive equilibrium model from ARFL
+        damp_mode = 1
 
-        if mode == 6:
-            # Test the Simplified GCPM model
-            MLT = 0
-            fixed_MLT = 0  # Force the raytracer to stay in the meridonal plane?
-            damp_mode = 0
+        ray_cmd = base_cmd + ' --gcpm_kp=%g' % (Kp)
+        damp_cmd = base_damp_cmd + ' --mode %d' % damp_mode
 
-            ray_cmd = base_cmd + ' --MLT="%g" --fixed_MLT=%g --kp=%g' % (MLT, fixed_MLT, Kp)
-            damp_cmd = base_damp_cmd + ' --mode %d' % damp_mode
-        
-        if mode == 7:
-            # Test the difusive equilibrium model from ARFL
-            damp_mode = 1
+    # Run it!
 
-            ray_cmd = base_cmd + ' --gcpm_kp=%g' % (Kp)
-            damp_cmd = base_damp_cmd + ' --mode %d' % damp_mode
+    #print("------- Running mode %d -------" % mode)
+    #print("Command is:")
+    #print(ray_cmd)
 
-        # Run it!
+    os.system(ray_cmd)
 
-        #print("------- Running mode %d -------" % mode)
-        #print("Command is:")
-        #print(ray_cmd)
+    #print("------- Running damping, mode %d -------" % damp_mode)
 
-        os.system(ray_cmd)
-
-        #print("------- Running damping, mode %d -------" % damp_mode)
-
-        #print(damp_cmd)
-        #os.system(damp_cmd)
+    #print(damp_cmd)
+    #os.system(damp_cmd)
 
     # Move back to the working directory
     os.chdir(cwd)

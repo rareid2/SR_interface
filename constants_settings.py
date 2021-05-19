@@ -1,9 +1,5 @@
 # import packages needed to define settings
-import numpy as np               # for math
-import os                        # for running commands
-import datetime as dt            # for coordinate transforms
-import tempfile
-import random, string
+import numpy as np
 
 # Constants (matching the original Fortran code)
 EPS0 = 8.854187817e-12        # C^2/Nm^2 
@@ -24,7 +20,7 @@ raytracer_dir = '/Users/rileyannereid/macworkspace/Stanford_Raytracer/bin'
 
 #  --------------------------- CHANGE ENV SETTINGS HERE  --------------------------
 # Environmental parameters
-Kp = 2
+Kp = 0
 AE = 1.6
 Pdyn = 4
 Dst = 1.0
@@ -34,31 +30,21 @@ BzIMF = -5
 W = [0.132, 0.303, 0.083, 0.070, 0.211, 0.308]  # Doesn't matter if we're not using Tsyg
 
 # Simulation parameters
-t_max = 20       # Maximum duration in seconds
+t_max = 1e3       # Maximum duration in seconds
 dt0 = 1e-3       # Initial timestep in seconds
-dtmax = 0.1      # Maximum allowable timestep in seconds
+dtmax = 0.5      # Maximum allowable timestep in seconds
 root = 2         # Which root of the Appleton-Hartree equation
                  # (1 = negative, 2 = positive)
                  # (2 = whistler in magnetosphere)
-fixedstep = 0    # Don't use fixed step sizes, that's a bad idea.
+fixedstep = 1    # Don't use fixed step sizes, that's a bad idea.
 maxerr = 5.0e-4  # Error bound for adaptive timestepping
-maxsteps = 3e3   # Max number of timesteps (abort if reached)
+maxsteps = 50e3   # Max number of timesteps (abort if reached)
 use_IGRF = 1     # Magnetic field model (1 for IGRF, 0 for dipole)
 use_tsyg = 1     # Use the Tsyganenko magnetic field model corrections
 minalt = R_E + 475e3   # cutoff altitude in meters
 
-# Which plasmasphere models should we run?
-#   1 - Legacy (Ngo) model
-#   2 - GCPM (Accurate, but * s l o w * )
-#   3 - Uniformly interpolated precomputed model
-#   4 - Randomly interpolated precomputed model
-#   5 - (not real)
-#   6 - Simplified GCPM from Austin Sousa's thesis
-#   7 - New! Diffusive Equilibrium AT64ThCh (see docs)
-
-
 # Should we include a geometric focusing term in the damping?
-include_geom_factor = 1  # 1 for yes
+include_geom_factor = 0  # 1 for yes
 
 # interpolation parameters for mode 4
 scattered_interp_window_scale = 1.2

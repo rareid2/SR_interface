@@ -20,6 +20,7 @@ def rotateplane(rc, tvec_datetime, crs, carsph, units):
     return final_crs
 #---------------------------------------------------------------------------
 
+
 # ---------------------------------------- STIX PARAM --------------------------------------------
 def stix_parameters(ray, t, w):
     # from austins code
@@ -27,14 +28,14 @@ def stix_parameters(ray, t, w):
     # get b field
     B   =  ray['B0'].iloc[t]
     Bmag = np.linalg.norm(B)
-
+    # get plasma species
     Q    = np.abs(np.array(ray['qs'].iloc[t,:]))
     M    = np.array(ray['ms'].iloc[t,:])
     Ns   = np.array(ray['Ns'].iloc[t,:])
-
+    # cyclotron and plasma freq
     Wcs   = Q*Bmag/M
     Wps2  = Ns*pow(Q,2)/EPS0/M
-
+    # stix param calculations
     R = 1.0 - np.sum(Wps2/(w*(w + Wcs)))
     L = 1.0 - np.sum(Wps2/(w*(w - Wcs)))
     P = 1.0 - np.sum(Wps2/(w*w))
@@ -69,6 +70,7 @@ def get_Lshells(lshells, tvec_datetime, crs, carsph, units):
         Lshell_fline.append([T_repackx, T_repackz])
     return Lshell_fline
 #---------------------------------------------------------------------------
+
 
 #---------------------------------------------------------------------------
 def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, md, show_plot=True, plot_density=False,damping_vals=None):
@@ -391,6 +393,7 @@ def plotNe(raylist):
 
 # --------------------------------------------------------------------------------------
 
+
 # ------------------------------------------- plot plasmasphere density (2D plot) --------------------------------------------
 def plot_plasmasphere_2D(md):
     fig, ax = plt.subplots(1,1)
@@ -431,6 +434,7 @@ def plot_plasmasphere_2D(md):
     plt.close()
 
 # ------------------------------------------- END --------------------------------------------
+
 
 # ------------------------------------------- plot plasmasphere 1D --------------------------------------------
 def plot_plasmasphere_1D(md):

@@ -31,9 +31,11 @@ dsx.propagatefromTLE(sec=0, orbit_dir='future', crs='SM', carsph='car', units=['
 # now we have ray start point in the correct coordinates (SM cartesian in m)
 ray_start = dsx.pos
 
-# what mode to run? see constants settings for descriptions
-# only mds 1,6,7 currently working
-md = 1
+# Which plasmasphere model should we run?
+#   1 - Legacy (Ngo) model
+#   6 - Simplified GCPM from Austin Sousa's thesis
+#   7 - New! Diffusive Equilibrium AT64ThCh (see docs)
+md = 6
 
 # how many rays? 
 nrays = 10 # how many rays -- THIS MUST BE EQUAL IN LENGTH TO THETAS
@@ -56,19 +58,17 @@ freqs = [freq for n in range(nrays)]
 
 # --------------------------------------- run ---------------------------------------------
 # time to run is about 1 sec every 10 rays 
-single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory,md)
+single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory, md)
 
 """
 # OR run parallel at different times -- use parallel_run_rays and input a list of times, and LIST OF LISTS with positions, 
 # directions, and frequencies
-
 # let's say we want to re-run this every 10 seconds in time for a minute
 tvec = [ray_datenum + dt.timedelta(seconds=i) for i in range(0,60,10)]
 positions_list = [positions for i in range(len(tvec))]
 directions_list = [directions for i in range(len(tvec))]
 freqs_list = [freqs for i in range(len(tvec))]
 directory_list = [rayfile_directory for i in range(len(tvec))]
-
 parallel_run_rays(tvec, positions_list, directions_list, freqs_list, directory_list)
 """
 
