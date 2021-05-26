@@ -8,6 +8,7 @@ from constants_settings import *
 from convert_coords import convert2
 from raytracer_utils import readdump
 from bfield import getBline
+import os 
 
 #------------------------------- rotation for plots --------------------------------------------
 def rotateplane(rc, tvec_datetime, crs, carsph, units):
@@ -476,3 +477,4 @@ def plot_plasmasphere_1D(md):
     plt.close()
 
 # ------------------------------------------- END --------------------------------------------
+#plot_plasmasphere_2D(6)

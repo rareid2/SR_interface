@@ -121,11 +121,11 @@ def single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory
 
     # Run it!
 
-    #print("------- Running mode %d -------" % mode)
+    print("------- Running mode %d -------" % mode)
     #print("Command is:")
     #print(ray_cmd)
 
-    os.system(ray_cmd)
+    #os.system(ray_cmd)
 
     #print("------- Running damping, mode %d -------" % damp_mode)
 

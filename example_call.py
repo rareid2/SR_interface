@@ -35,7 +35,7 @@ ray_start = dsx.pos
 #   1 - Legacy (Ngo) model
 #   6 - Simplified GCPM from Austin Sousa's thesis
 #   7 - New! Diffusive Equilibrium AT64ThCh (see docs)
-md = 6
+md = 2
 
 # how many rays? 
 nrays = 10 # how many rays -- THIS MUST BE EQUAL IN LENGTH TO THETAS
