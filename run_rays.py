@@ -3,29 +3,34 @@ import numpy as np
 import os
 import datetime as dt
 from multiprocessing import Pool, cpu_count
+import multiprocessing
 from constants_settings import *
 from run_model_dump import modeldump
 from raytracer_utils import get_yearmiliday
 
-def single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory, mode):
+def single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory, mode, runmodeldump=False):
 
     print('running', ray_datenum)
+    fp = str(multiprocessing.current_process())[19:36]
+    fp.replace("'",'')
+    # make numbers double digit
 
     yearday, milliseconds_day = get_yearmiliday(ray_datenum)
 
     project_root = os.getcwd()  # grabs current full path
 
     # Create directory for inputs/outputs if doesn't already exist
-    ray_out_dir = rayfile_directory + '/'+ dt.datetime.strftime(ray_datenum, '%Y-%m-%d %H:%M:%S')
+    ray_out_dir = rayfile_directory + '/'+ dt.datetime.strftime(ray_datenum, '%Y-%m-%d %H:%M:%S') #+ '/' + str(int(freqs[0]/10))
 
     print("directory:", ray_out_dir)
     if not os.path.exists(ray_out_dir):
-        os.mkdir(ray_out_dir)
+        os.makedirs(ray_out_dir)
 
     # Set input file path
-    ray_inpfile = os.path.join(ray_out_dir, 'ray_inpfile.txt')
+    ray_inpfile = os.path.join(ray_out_dir, 'ray_inpfile'+fp+'.txt')
 
-    modeldump(ray_datenum, mode)
+    if runmodeldump:
+        modeldump(ray_datenum, mode)
 
     # Set config file for mode 3
     mode3_interpfile = os.path.join(project_root, 'precomputed_grids',
@@ -50,7 +55,7 @@ def single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory
     os.chdir(raytracer_dir)
 
     # Set output file path
-    ray_outfile = os.path.join(ray_out_dir, 'ray_out_mode%d.ray' % mode)
+    ray_outfile = os.path.join(ray_out_dir, 'ray_out_mode%d_%s.ray' % (mode,fp))
     damp_outfile = os.path.join(ray_out_dir, 'ray_out_mode%d.damp' % mode)
 
     # The base command -- with parameters common for all modes
@@ -106,7 +111,7 @@ def single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory
     if mode == 6:
         # Test the Simplified GCPM model
         MLT = 0
-        fixed_MLT = 0  # Force the raytracer to stay in the meridonal plane?
+        fixed_MLT = 0 # Force the raytracer to stay in the meridonal plane?
         damp_mode = 0
 
         ray_cmd = base_cmd + ' --MLT="%g" --fixed_MLT=%g --kp=%g' % (MLT, fixed_MLT, Kp)
@@ -121,11 +126,11 @@ def single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory
 
     # Run it!
 
-    print("------- Running mode %d -------" % mode)
+    #print("------- Running mode %d -------" % mode)
     #print("Command is:")
     #print(ray_cmd)
 
-    #os.system(ray_cmd)
+    os.system(ray_cmd)
 
     #print("------- Running damping, mode %d -------" % damp_mode)
 
@@ -140,7 +145,7 @@ def single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory
     return 
 
 # -------------------------------- PARALLELIZE --------------------------------
-def parallel_run_rays(time_list, position_list, direction_list, freq_list, output_directory):
+def parallel_run_rays(time_list, position_list, direction_list, freq_list, output_directory, mds):
 
     # parallel
     nmbrcores = cpu_count()
@@ -148,7 +153,7 @@ def parallel_run_rays(time_list, position_list, direction_list, freq_list, outpu
 
     # every 100 rays is ~10 seconds 
     print('est time: ', round(len(time_list)*len(position_list)/(60*10*nmbrcores/4),2), ' min')
-    lstarg = zip(time_list, position_list, direction_list, freq_list, output_directory)
+    lstarg = zip(time_list, position_list, direction_list, freq_list, output_directory, mds)
     
     with Pool(nmbrcores) as p:
         results = p.starmap(single_run_rays, lstarg)

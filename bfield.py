@@ -5,8 +5,8 @@ from constants_settings import *
 from convert_coords import convert2
 from run_rays import single_run_rays, parallel_run_rays
 from raytracer_utils import read_rayfile
-#import PyGeopack as gp
-from random import randrange, uniform
+import PyGeopack as gp
+import random
 import matplotlib.pyplot as plt
 
 # uses PyGeopack (same as raytracer but its still a lil diff)
@@ -51,7 +51,7 @@ def getBline(pos, ray_datenum,stopalt):
     z = pos[2]/R_E
 
     # uses T96, need to confirm this is constistent w raytracer
-    T = gp.TraceField(x,y,z,Date,ut,Model='T96',CoordIn='SM',CoordOut='SM',alt=stopalt)
+    T = gp.TraceField(x,y,z,Date,ut,Model='T96',CoordIn='SM',CoordOut='SM',alt=stopalt,dir=-1)
     return T
 
 # --------------------------------------------------------------------
@@ -63,7 +63,7 @@ def getBdir(ray_start, ray_datenum, rayfile_directory, thetas, phis, md, select_
     directions = [(0,0,0)]
     freqs = [15e3]
     # going to run a ray real quick
-    single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory, md)
+    single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory, md, runmodeldump=False)
 
     # Load all the rayfiles in the output directory
     ray_out_dir = rayfile_directory + '/'+dt.datetime.strftime(ray_datenum, '%Y-%m-%d %H:%M:%S')
@@ -72,7 +72,8 @@ def getBdir(ray_start, ray_datenum, rayfile_directory, thetas, phis, md, select_
     # create empty lists to fill with ray files and damp files
     raylist = []
     for filename in file_titles:
-        if '.ray' in filename and str(md) in filename:
+        if '.ray' in filename and str(md) in filename and str('Main') in filename:
+            print(filename)
             raylist += read_rayfile(os.path.join(ray_out_dir, filename))
 
     # get b direction for this ray
@@ -128,8 +129,11 @@ def getBdir(ray_start, ray_datenum, rayfile_directory, thetas, phis, md, select_
 
             cone_vec = cone_vec/np.linalg.norm(cone_vec)
             converted_dirs.append(zsign*cone_vec)
-            #ax.plot3D([0,cone_vec[0]], [0,cone_vec[1]], [0,zsign*cone_vec[2]])
-        #ax.plot3D([0,Bunit[0]],[0,Bunit[1]],[0,Bunit[2]],'k')
+            #ax.quiver(0,0,0,zsign*cone_vec[0],zsign*cone_vec[1],zsign*cone_vec[2],length=1)
+        #ax.quiver(0,0,0,Bunit[0],Bunit[1],Bunit[2],length=1.25)
+        #ax.axes.set_xlim3d(left=0, right=1.5) 
+        #ax.axes.set_ylim3d(bottom=0, top=1.5) 
+        #ax.axes.set_zlim3d(bottom=0, top=1.5) 
         #plt.show()
         #plt.close()
 

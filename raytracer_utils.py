@@ -245,3 +245,45 @@ def read_damp_matlab(fname):
         else:
             damp_data.append(float(lines[1]))
     return damp_data
+
+# for really large ray files (several gigs)
+def read_bigrayfile(rayfile):
+    ''' Load output from Forest's raytracer'''
+    num=0
+
+    ray_data = []
+    last_raynum = 1
+    last_line = 0
+    bad_ray = 0
+    with open(rayfile) as a_file:
+
+        try:
+            for line in a_file:
+                lines = line.split()
+                ray_num = int(lines[0])
+
+                if int(lines[1])!=1:
+                    if ray_num == last_raynum:
+                        pass
+                    else:
+                        bad_ray+=1
+
+                if ray_num == last_raynum:
+                    pass
+                elif ray_num != last_raynum:
+                    ray_data.append([float(last_line[3]),float(last_line[4]),float(last_line[5])])
+
+                last_line = lines
+                last_raynum = ray_num
+                    
+            # get the last ray!
+            ray_data.append([float(lines[3]),float(lines[4]),float(lines[5])])
+
+        except:
+            print('imma keep goin')
+            pass
+
+    print(bad_ray, ray_num)
+    a_file.close()
+    return ray_data
+    

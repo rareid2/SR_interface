@@ -7,17 +7,17 @@ from satellites import sat
 from bfield import getBdir
 from run_rays import single_run_rays, parallel_run_rays
 from raytracer_utils import read_rayfile, read_damp_simple
-from ray_plots import plotray2D
+from ray_plots import plotray2D, plotrefractivesurface, plot_density_alongpath
 
 # example call to ray tracer!
 # --------------------------------------- set up ------------------------------------------
-rayfile_directory = '/Users/rileyannereid/macworkspace/SR_output' # store output here
+rayfile_directory = '/media/rileyannereid/DEMETER/SR_output' # store output here
 
 # FIRST, navigate to constants_settings and make sure the settings are correct for the run
 
 # let's look at a conjunction between DSX and VPM:
 # use the datetime package to define the start time -- make sure to use UTC timezone
-ray_datenum = dt.datetime(2020,8,25,9,36, tzinfo=dt.timezone.utc)
+ray_datenum = dt.datetime(2014,1,1,12,0, tzinfo=dt.timezone.utc)
 
 # we need the positions of the satellites -- use the sat class
 dsx = sat()             # define a satellite object
@@ -35,41 +35,29 @@ ray_start = dsx.pos
 #   1 - Legacy (Ngo) model
 #   6 - Simplified GCPM from Austin Sousa's thesis
 #   7 - New! Diffusive Equilibrium AT64ThCh (see docs)
-md = 2
+md = 1
 
 # how many rays? 
-nrays = 10 # how many rays -- THIS MUST BE EQUAL IN LENGTH TO THETAS
+nrays = 1 # how many rays -- THIS MUST BE EQUAL IN LENGTH TO THETAS
 
 # next, define the direction of the ray
 # this step will actually run the raytracer to sample the Bfield correctly
 # theta = 0 goes north, theta=180 goes south
-thetas = [-180 for i in range(nrays)] # go south
+thetas = [0 for i in range(nrays)] # go south
 directions, ra, thetas, phis = getBdir(ray_start, ray_datenum, rayfile_directory, thetas, np.zeros(len(thetas)), md)
 
-# run at a single time -- use run_rays and input a list of positions, directions, and freqs (ALL SAME LENGTH)
-# generates one input file and one output file with all rays in it
+freq = 2.3e3 # Hz
 
-freq = 8.2e3  # Hz
-
-# simplest call
 positions = [ray_start[0] for n in range(nrays)]
 freqs = [freq for n in range(nrays)]
 
-
 # --------------------------------------- run ---------------------------------------------
 # time to run is about 1 sec every 10 rays 
-single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory, md)
+single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory, md, runmodeldump=True)
 
 """
 # OR run parallel at different times -- use parallel_run_rays and input a list of times, and LIST OF LISTS with positions, 
 # directions, and frequencies
-# let's say we want to re-run this every 10 seconds in time for a minute
-tvec = [ray_datenum + dt.timedelta(seconds=i) for i in range(0,60,10)]
-positions_list = [positions for i in range(len(tvec))]
-directions_list = [directions for i in range(len(tvec))]
-freqs_list = [freqs for i in range(len(tvec))]
-directory_list = [rayfile_directory for i in range(len(tvec))]
-parallel_run_rays(tvec, positions_list, directions_list, freqs_list, directory_list)
 """
 
 # ------------------------------------- output -------------------------------------------------
@@ -83,12 +71,7 @@ file_titles = os.listdir(ray_out_dir)
 raylist = []
 damplist = []
 for filename in file_titles:
-    if '.ray' in filename:
+    if '.ray' in filename and str(md) in filename:
         raylist += read_rayfile(os.path.join(ray_out_dir, filename))
-    if 'damp' in filename:
-        dd = read_damp_simple(os.path.join(ray_out_dir, filename)) 
-        damplist.append(dd)
 
-plotray2D(ray_datenum, raylist, ray_out_dir, 'GEO', 'car', ['Re','Re','Re'], md)
-
-# check plotting script for other plot options! (Ne, density, etc.)
+plotray2D(ray_datenum, raylist, ray_out_dir, 'GEO', 'car', ['Re','Re','Re'], md, show_plot=True)

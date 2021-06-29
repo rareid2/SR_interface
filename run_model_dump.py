@@ -44,7 +44,7 @@ def gen_ngofile(Kp, configfile):
     # // lambda_min-3 <= lambda <= lambda_max+3 is printed.
     NSUPPR    = 0;
 
-    # // Special latitude: if SPELAT ~= 0, pogram tries to compute
+    # // Special latitude: if SPELAT ~= 0, program tries to compute
     # // and print the output at the latitude lambda = 10 + eps
     SPELAT    = 0;
 
@@ -90,7 +90,7 @@ def gen_ngofile(Kp, configfile):
     # // 1 or 2, because plasmapause is a duct and we had another one
     # // to make the steepness of electron dropoff accurate.
     # change 2 to 4
-    KDUCTS = 4;
+    KDUCTS = 2;
 
     # // File number of results recorded on tape.  If =0, only
     # // lineprinter, if =1, the first file is the program itself.
@@ -101,14 +101,14 @@ def gen_ngofile(Kp, configfile):
 
     # // Density reference point - range in L shell
     # change 2.5 to 2
-    DSRRNG  = 2;
+    DSRRNG  = 2.5;
 
     # // Density reference point - latitude in degrees
     DSRLAT  = 0;
 
     # // Density reference point - el/cc @ reference point
     # changed from 2500 to 2000
-    DSRDENS = 2000 # 2000 #2500;
+    DSRDENS = 2500 # 2000 #2500;
 
     card.write("%g %g %g %g %g %g %g %g %g %g\n"%
       (NUM, KSKIP, MODE, KOUNT, KDUCTS, KTAPE, REFALT,
@@ -121,7 +121,8 @@ def gen_ngofile(Kp, configfile):
 
     # // Temperature used in the diffusive equilibrium density model
     # changed to 11600 from 1600 (not sure why)
-    THERM = 11600 #1600;  1 ev = 1.602e-19 / (boltzman const, 1.38e-23)
+    # DO NOT CHANGE THIS AGAIN
+    THERM = 1600 #1600;  1 ev = 1.602e-19 / (boltzman const, 1.38e-23)
 
     # // Initial integration stepsize H = 50*HM/sqrt(f), except below
     # // RDIV, where H is 1/16 of this value
@@ -140,11 +141,11 @@ def gen_ngofile(Kp, configfile):
 
     # // ----------- CARD 6: Diffusive Equilirium input  -----------
     # // Geocentric base (in km) of DE density model
-    RBASE = 6580; # changed from 7370
+    RBASE = 7370; # changed from 6580
 
     # // Electron density (cm^-3) at RBASE.  Final density here could
     # // actually be different due to other things such as ducts, etc.
-    ANE0  = 1
+    ANE0  = 3100
 
     # // relative concentration of H+ at RBASE, i.e. [H+]/[H+ + He+ + O+]
     ALPHA0_2= 0.08;
@@ -160,6 +161,7 @@ def gen_ngofile(Kp, configfile):
     # // ---------------- CARD 7: Model Input ------------------------
     # // Geocentric distance of the bottom of the ionosphere, where
     # // density =0 (km)
+    # 90 km
     RZERO = 6460;
 
     # // Scale height at the bottom side of the lower ionosphere (km)
@@ -186,25 +188,27 @@ def gen_ngofile(Kp, configfile):
     # //LK = 4.61;  // KP = 2
     # //LK = 3.69;  // KP = 4
     # // Moldwin 2002 model of the plasmapause location
-    LK =  5.39 - 0.382*Kp;
+    # changed back to CA model
+    LK =  5.6 - 0.46*Kp;
     # LK = 5.39;
 
 
     # // Exponential component of density decrease beyond the knee,
     # // R^{-EXPK}.  This is in addition to decrease due to DE model.
-    EXPK  = 0.13 #0.13;
+    EXPK  = 2 #0.13;
 
     # // Halfwidth in L of the knee
-    DDK =0.2 #0.1 #0.2 # 0.07 #0.07;
+    DDK = 0.13 #0.2 # 0.07 #0.07;
 
     # // Geocentric distance (km) where density outside the knee is
     # // equal to the density inside (???).  Modeil is not good
     # // below RCONSS outside of the knee.
-    RCONSN = 1e-8;
+    RCONSN = 5500;
 
     # // Scale height of the radial density decrease above RCONSN
     # // above the knee.
-    SCR = 50;
+    # is this in km? yes 
+    SCR = 500;
 
     card.write("%g %g %g %g %g\n"%(LK, EXPK, DDK, RCONSN, SCR))
 
@@ -218,12 +222,13 @@ def gen_ngofile(Kp, configfile):
     L0    = 1.1;
 
     # // Enhancement factor of the duct
-    DEF   = 30.0;
+    DEF   = 1.8;
 
     # // Duct half-width in L.  If -ve, then sinusoidal perturbation,
     # // and DD is the period in L of the sinusoidal perturbation
     # changed from 1.0 to 4.0
-    DD    = 4.0;
+    # duct width of 2.55 in Bortnik et al 2011
+    DD    = 1.52;
 
     # // Geocentric radius (km) of the power end of the duct.  Below
     # // this height, the duct merges into the background plasma. If
@@ -236,6 +241,7 @@ def gen_ngofile(Kp, configfile):
 
     # // Geocentric radius of the upper end of the duct.  If it extends
     # // to equator, set = 6370*L0 - In the NORTH
+    # doesnt seem to do anything...
     RDUCUN  = 70081;
 
     # // Radial scale height with which upper end of duct merges into
@@ -389,7 +395,8 @@ def modeldump(ray_datenum,md):
           if mag_dump:
               model_outfile = os.path.join(ray_out_dir, 'model_dump_mode_%d_%s_MAG.dat' % (mode, plane))
           else:
-              model_outfile = os.path.join(ray_out_dir, 'model_dump_mode_%d_%s.dat' % (mode, plane))
+              model_outfile = os.path.join(ray_out_dir, 'model_dump_mode_%d_%s_%d.dat' % (mode, plane, Kp))
+              print(model_outfile)
 
           cmd = './dumpmodel' + \
                 ' --modelnum=%d --yearday=%s --milliseconds_day=%d ' % (mode, yearday, milliseconds_day) + \
