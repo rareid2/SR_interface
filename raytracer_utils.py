@@ -257,33 +257,66 @@ def read_bigrayfile(rayfile):
     bad_ray = 0
     with open(rayfile) as a_file:
 
-        try:
-            for line in a_file:
-                lines = line.split()
-                ray_num = int(lines[0])
+        for line in a_file:
+            lines = line.split()
+            ray_num = int(lines[0])
 
-                if int(lines[1])!=1:
-                    if ray_num == last_raynum:
-                        pass
-                    else:
-                        bad_ray+=1
-
+            if int(lines[1])!=1:
                 if ray_num == last_raynum:
                     pass
-                elif ray_num != last_raynum:
-                    ray_data.append([float(last_line[3]),float(last_line[4]),float(last_line[5])])
+                else:
+                    bad_ray+=1
 
-                last_line = lines
-                last_raynum = ray_num
-                    
-            # get the last ray!
-            ray_data.append([float(lines[3]),float(lines[4]),float(lines[5])])
+            if ray_num == last_raynum:
+                pass
+            elif ray_num != last_raynum:
+                ray_data.append([float(last_line[3]),float(last_line[4]),float(last_line[5])])
 
-        except:
-            print('imma keep goin')
-            pass
+            last_line = lines
+            last_raynum = ray_num
+                
+        # get the last ray!
+        ray_data.append([float(lines[3]),float(lines[4]),float(lines[5])])
+        #print('imma keep goin')
+        #pass
 
     print(bad_ray, ray_num)
     a_file.close()
     return ray_data
-    
+
+def read_bigrayfile_in(rayfile):
+    ''' Load output from Forest's raytracer'''
+    num=0
+
+    ray_data = []
+    last_raynum = 0 # catch the first ray
+    last_line = 0
+    bad_ray = 0
+    with open(rayfile) as a_file:
+
+        for line in a_file:
+            lines = line.split()
+            ray_num = int(lines[0])
+
+            if int(lines[1])!=1:
+                if ray_num == last_raynum:
+                    pass
+                else:
+                    bad_ray+=1
+
+            if ray_num == last_raynum:
+                pass
+            elif ray_num != last_raynum: # save initial position!
+                ray_data.append([float(lines[3]),float(lines[4]),float(lines[5])])
+
+            last_line = lines
+            last_raynum = ray_num
+                
+        # get the last ray!
+        #ray_data.append([float(lines[3]),float(lines[4]),float(lines[5])])
+        #print('imma keep goin')
+        #pass
+
+    print(bad_ray, ray_num)
+    a_file.close()
+    return ray_data

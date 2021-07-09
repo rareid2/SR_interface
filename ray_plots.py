@@ -9,6 +9,10 @@ from convert_coords import convert2
 from raytracer_utils import readdump
 from bfield import getBline
 import os 
+from spacepy import coordinates as coord
+from spacepy.time import Ticktock
+import matplotlib.pylab as pl
+from matplotlib.colors import ListedColormap
 
 #------------------------------- rotation for plots --------------------------------------------
 def rotateplane(rc, tvec_datetime, crs, carsph, units):
@@ -175,13 +179,13 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, md, t_save=
         import matplotlib.cbook as cbook
 
         img = plt.imread(ray_out_dir+'/ccrs_proj.png', format='png')
-        fig, ax = plt.subplots(figsize=(6,6))
+        fig, ax = plt.subplots(figsize=(12,12))
         im = ax.imshow(img, extent=[-1.62,1.62,-1.3,1.3],zorder=2) # not the most scientific
         patch = patches.Circle((0, 0), radius=1.02, transform=ax.transData)
         im.set_clip_path(patch)
 
     except:
-        fig, ax = plt.subplots(figsize=(6,6))
+        fig, ax = plt.subplots(figsize=(12,12))
         earth = plt.Circle((0, 0), 1, color='b', alpha=0.5, zorder=100)
         iono = plt.Circle((0, 0), (R_E + H_IONO) / R_E, color='g', alpha=0.5, zorder=99)
         ax.add_artist(earth)
@@ -204,18 +208,33 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, md, t_save=
         binnum = 40
         binlon = np.linspace(0,4,num=binnum)
         binlat = np.linspace(-2,2,num=binnum)
-        cmap = plt.cm.get_cmap('Blues')
+        #cmap = plt.cm.get_cmap('Blues')
+
+        # Choose colormap which will be mixed with the alpha values
+        cmap = pl.cm.coolwarm
+
+        # Get the colormap colors
+        my_cmap = cmap(np.arange(cmap.N))
+        # Define the alphas in the range from 0 to 1
+        alphas = 0.5*np.ones(cmap.N)
+        # Define the background as white
+        BG = np.asarray([1., 1., 1.,])
+        # Mix the colors with the background
+        for i in range(cmap.N):
+            my_cmap[i,:-1] = my_cmap[i,:-1] * alphas[i] + BG * (1.-alphas[i])
+        # Create new colormap which mimics the alpha values
+        my_cmap = ListedColormap(my_cmap)
 
         # create the density plot 
         # log norm scale
         nrays = 10000
-        h=ax.hist2d(rotated_rcoords_x, rotated_rcoords_z,bins = [np.array(binlon),np.array(binlat)],weights=weights,norm=mpl.colors.LogNorm(),cmap=cmap)
+        h=ax.hist2d(rotated_rcoords_x, rotated_rcoords_z,bins = [np.array(binlon),np.array(binlat)],weights=weights,norm=mpl.colors.LogNorm(),cmap=my_cmap,zorder=1)
         ticks=[1,10,100,1000,1e4]
         tlabels = [10*np.log10(i/nrays) for i in ticks]
-        cbar = fig.colorbar(h[3], ax=ax,shrink=0.84,pad=0.02,ticks=ticks)
+        cbar = fig.colorbar(h[3], ax=ax,pad=0.02,ticks=ticks)
         cbar.set_label(label='dBW',weight='bold')
         cbar.ax.set_yticklabels([str(int(tt)) for tt in tlabels])  # vertically oriented colorbar
-    
+            
     else:
         # or just plot the ray paths
         ax.scatter(rotated_rcoords_x[0], rotated_rcoords_z[0], c = 'Blue', s=10)
@@ -232,19 +251,29 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, md, t_save=
     Lshell_flines = get_Lshells(L_shells, tvec_datetime, crs, carsph, units)
     
     for lfline in Lshell_flines:
-        ax.plot(lfline[0], lfline[1], color='Black', linewidth=1, linestyle='dashed')
+        ax.plot(lfline[0], lfline[1], color='Black', linewidth=1, linestyle='dashed',zorder=3)
 
     plt.xlabel('L (R$_E$)')
     plt.ylabel('L (R$_E$)')
     #plt.xlim([0, max(L_shells)])
     plt.xlim([0, 3])
     plt.ylim([-2, 2])
+
+    # finally, add a few mlats on here
+    #ray_label = rotated_rcoords[0]
+    # grab 10 points along it's path
+    #for rl in range(ray_label)
+    #cvals = coord.Coords([closest_element], 'SM', 'car')
+    #cvals.ticks = Ticktock([ray_datenum], 'ISO') # add ticks
+    #B_mag = cvals.convert('MAG', 'sph')
+    #mlat = B_mag.lati
+    #mlats.append(mlat)
     
     if t_save:
         plt.savefig(ray_out_dir + '/' + dt.datetime.strftime(ray_datenum, '%Y_%m_%d_%H%M%S') + '_' + str(round(w/(1e3*np.pi*2), 1)) + 'kHz' +'_2Dview' + str(md) + '_'+str(t_save)+ '.png')
     else:
         plt.title(dt.datetime.strftime(ray_datenum, '%Y-%m-%d %H:%M:%S') + ' ' + str(round(w/(1e3*np.pi*2), 1)) + 'kHz')
-        plt.savefig(ray_out_dir + '/' + dt.datetime.strftime(ray_datenum, '%Y_%m_%d_%H%M%S') + '_' + str(round(w/(1e3*np.pi*2), 1)) + 'kHz' +'_2Dview' + str(md) + '.png')
+        plt.savefig(ray_out_dir + '/' + dt.datetime.strftime(ray_datenum, '%Y_%m_%d_%H%M%S') + '_' + str(round(w/(1e3*np.pi*2), 1)) + 'kHz' +'_2Dview' + str(md) + '.png',bbox_inches='tight')
 
     if show_plot:
         plt.show()

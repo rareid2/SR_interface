@@ -10,9 +10,10 @@ from raytracer_utils import get_yearmiliday
 
 def single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory, mode, runmodeldump=False):
 
-    print('running', ray_datenum)
     fp = str(multiprocessing.current_process())[19:36]
-    fp.replace("'",'')
+    fp = fp.replace("'",'')
+    if len(fp) < 17:
+        fp = fp[:-1] + '0' + fp[-1]
     # make numbers double digit
 
     yearday, milliseconds_day = get_yearmiliday(ray_datenum)
@@ -20,9 +21,8 @@ def single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory
     project_root = os.getcwd()  # grabs current full path
 
     # Create directory for inputs/outputs if doesn't already exist
-    ray_out_dir = rayfile_directory + '/'+ dt.datetime.strftime(ray_datenum, '%Y-%m-%d %H:%M:%S') #+ '/' + str(int(freqs[0]/10))
+    ray_out_dir = rayfile_directory + '/'+ dt.datetime.strftime(ray_datenum, '%Y-%m-%d_%H_%M_%S') #+ '/' + str(int(freqs[0]/10))
 
-    print("directory:", ray_out_dir)
     if not os.path.exists(ray_out_dir):
         os.makedirs(ray_out_dir)
 
@@ -149,10 +149,8 @@ def parallel_run_rays(time_list, position_list, direction_list, freq_list, outpu
 
     # parallel
     nmbrcores = cpu_count()
-    print('running on ' + str(nmbrcores) + ' cores')
+    print(nmbrcores, ' run')
 
-    # every 100 rays is ~10 seconds 
-    print('est time: ', round(len(time_list)*len(position_list)/(60*10*nmbrcores/4),2), ' min')
     lstarg = zip(time_list, position_list, direction_list, freq_list, output_directory, mds)
     
     with Pool(nmbrcores) as p:

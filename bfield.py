@@ -66,7 +66,7 @@ def getBdir(ray_start, ray_datenum, rayfile_directory, thetas, phis, md, select_
     single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory, md, runmodeldump=False)
 
     # Load all the rayfiles in the output directory
-    ray_out_dir = rayfile_directory + '/'+dt.datetime.strftime(ray_datenum, '%Y-%m-%d %H:%M:%S')
+    ray_out_dir = rayfile_directory + '/'+dt.datetime.strftime(ray_datenum, '%Y-%m-%d_%H_%M_%S')
     file_titles = os.listdir(ray_out_dir)
 
     # create empty lists to fill with ray files and damp files
