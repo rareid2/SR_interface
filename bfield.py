@@ -104,7 +104,7 @@ def getBdir(ray_start, ray_datenum, rayfile_directory, thetas, phis, md, select_
 
         for n in range(0,nrays):
             # sample theta as concentric circles around the z axis, max at resonance angle
-            thetas.append((random.random()*(resangle_deg-3)))
+            thetas.append((random.random()*(resangle_deg-1)))
             # uniform azimuth around the z axis
             phis.append(random.random()*360)
 

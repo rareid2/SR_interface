@@ -32,10 +32,9 @@ dsx.propagatefromTLE(sec=0, orbit_dir='future', crs='SM', carsph='car', units=['
 ray_start = dsx.pos
 
 # Which plasmasphere model should we run?
-#   1 - Legacy (Ngo) model
 #   6 - Simplified GCPM from Austin Sousa's thesis
 #   7 - New! Diffusive Equilibrium AT64ThCh (see docs)
-md = 1
+md = 7
 
 # how many rays? 
 nrays = 1 # how many rays -- THIS MUST BE EQUAL IN LENGTH TO THETAS
@@ -43,10 +42,10 @@ nrays = 1 # how many rays -- THIS MUST BE EQUAL IN LENGTH TO THETAS
 # next, define the direction of the ray
 # this step will actually run the raytracer to sample the Bfield correctly
 # theta = 0 goes north, theta=180 goes south
-thetas = [0 for i in range(nrays)] # go south
+thetas = [-45 for i in range(nrays)] # go south
 directions, ra, thetas, phis = getBdir(ray_start, ray_datenum, rayfile_directory, thetas, np.zeros(len(thetas)), md)
 
-freq = 2.3e3 # Hz
+freq = 8.2e3 # Hz
 
 positions = [ray_start[0] for n in range(nrays)]
 freqs = [freq for n in range(nrays)]
@@ -64,7 +63,7 @@ single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory, md
 # that's it! let's look at output
 
 # Load all the rayfiles in the output directory
-ray_out_dir = rayfile_directory + '/'+dt.datetime.strftime(ray_datenum, '%Y-%m-%d %H:%M:%S')
+ray_out_dir = rayfile_directory + '/'+dt.datetime.strftime(ray_datenum, '%Y-%m-%d_%H_%M_%S')
 file_titles = os.listdir(ray_out_dir)
 
 # create empty lists to fill with ray files and damp files
