@@ -13,7 +13,50 @@ from spacepy import coordinates as coord
 from spacepy.time import Ticktock
 import matplotlib.pylab as pl
 from matplotlib.colors import ListedColormap
+from matplotlib.collections import LineCollection
+import matplotlib
+from inspect import getmembers, isclass
 from satellites import sat
+
+# ------------------------- thank u stack overflow -------------------------
+def multiline(xs, ys, c, ax=None, **kwargs):
+    """Plot lines with different colorings
+
+    Parameters
+    ----------
+    xs : iterable container of x coordinates
+    ys : iterable container of y coordinates
+    c : iterable container of numbers mapped to colormap
+    ax (optional): Axes to plot on.
+    kwargs (optional): passed to LineCollection
+
+    Notes:
+        len(xs) == len(ys) == len(c) is the number of line segments
+        len(xs[i]) == len(ys[i]) is the number of points for each line (indexed by i)
+
+    Returns
+    -------
+    lc : LineCollection instance.
+    """
+
+    # find axes
+    ax = plt.gca() if ax is None else ax
+
+    # create LineCollection
+    segments = [np.column_stack([x, y]) for x, y in zip(xs, ys)]
+    lc = LineCollection(segments, **kwargs)
+
+    # set coloring of line segments
+    #    Note: I get an error if I pass c as a list here... not sure why.
+    lc.set_array(np.asarray(c))
+
+    # add lines to axes and rescale 
+    #    Note: adding a collection doesn't autoscalee xlim/ylim
+    ax.add_collection(lc)
+    ax.autoscale()
+    return lc
+# -----------------------------------------
+
 
 #------------------------------- rotation for plots --------------------------------------------
 def rotateplane(rc, tvec_datetime, crs, carsph, units):
@@ -79,7 +122,7 @@ def get_Lshells(lshells, tvec_datetime, crs, carsph, units):
 
 
 #---------------------------------------------------------------------------
-def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, md, t_save=None, show_plot=True, damping_vals=None):
+def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, md, checklat, t_save=None, plot_wna=False, show_plot=True, damping_vals=None):
 
     # !!!!!!! ONLY suports cartesian plotting!
     # make figures directory if doesnt exist
@@ -105,10 +148,15 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, md, t_save=
         # alpha is wna
         alpha = np.arccos(np.dot(kunit, bunit))
         alphaedg = float(alpha)*R2D
+        if checklat < 0:
+            alphaedg = 180 - alphaedg
+        if alphaedg > 90:
+            alphaedg = 90 - (alphaedg - 90)
         findmax_deg.append(alphaedg)
+
         
         # only want to plot 100 rays to visualize
-        if ri < 100:
+        if ri < 500:
             # comes in as SM car in m 
             tmp_coords = list(zip(r['pos'].x, r['pos'].y, r['pos'].z))
             nmag = np.sqrt(r['n'].x.iloc[0]**2 +r['n'].y.iloc[0]**2+r['n'].z.iloc[0]**2)
@@ -125,6 +173,18 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, md, t_save=
     nmax = np.sqrt(rm['n'].x.iloc[0]**2 +rm['n'].y.iloc[0]**2+rm['n'].z.iloc[0]**2)
     
     # -------------------------------- PLOTTING --------------------------------
+    import seaborn as sns
+
+    sns.set_context("notebook", rc={"font.size":16,
+                                    "axes.titlesize":18,
+                                    "axes.labelsize":12})
+    sns.set(font='Franklin Gothic Book',
+        rc={
+ 'patch.edgecolor': 'w',
+ 'patch.force_edgecolor': True,
+})
+
+    
     ray1 = ray_coords[0][0]
     # this is GEO for the Earth plot
     ray1_sph = convert2([ray1], tvec_datetime, crs, carsph, units, 'GEO', 'sph', ['m','deg','deg'])
@@ -146,7 +206,7 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, md, t_save=
         # chunk of code for the Earth
         ax = plt.axes(projection=ccrs.Orthographic(central_longitude=(catch*plane_long)-90, central_latitude=0.0))
         ax.add_feature(cartopy.feature.OCEAN, zorder=0)
-        ax.add_feature(cartopy.feature.LAND, zorder=0, edgecolor='black')
+        ax.add_feature(cartopy.feature.LAND, zorder=0, edgecolor='w')
         ax.coastlines()
         plt.savefig(ray_out_dir+'/figures/ccrs_proj.png')
         plt.cla()
@@ -157,33 +217,52 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, md, t_save=
         img = plt.imread(ray_out_dir+'/figures/ccrs_proj.png', format='png')
         fig, ax = plt.subplots(figsize=(12,12))
         im = ax.imshow(img, extent=[-1.62,1.62,-1.3,1.3],zorder=2) # not the most scientific
-        patch = patches.Circle((0, 0), radius=1.02, transform=ax.transData)
+        patch = patches.Circle((0, 0), radius=1.02, transform=ax.transData,edgecolor='w')
+
         im.set_clip_path(patch)
 
     except: # or just a patch for the Earth
         fig, ax = plt.subplots(figsize=(12,12))
-        earth = plt.Circle((0, 0), 1, color='b', alpha=0.5, zorder=100)
-        iono = plt.Circle((0, 0), (R_E + H_IONO) / R_E, color='g', alpha=0.5, zorder=99)
+        earth = plt.Circle((0, 0), 1, color='b', alpha=0.5, zorder=2)
+        iono = plt.Circle((0, 0), (R_E + H_IONO) / R_E, color='g', alpha=0.5, zorder=1)
         ax.add_artist(earth)
         ax.add_artist(iono)
 
     # plot the rays
     rotated_rcoords = []
+    all_ray_coords = []
     # rotate to be in plane (XZ plane)
     for rayc in ray_coords:
+        ray_individ = []
         for rc in rayc:
             rotated = rotateplane([rc], tvec_datetime, crs, carsph, units)
             rotated_rcoords.append(rotated[0])
+            ray_individ.append(rotated[0])
+        all_ray_coords.append(ray_individ)
 
     # repack in xz plane
     rotated_rcoords_x = [rcs[0] for rcs in rotated_rcoords]
     rotated_rcoords_z = [rcs[2] for rcs in rotated_rcoords]
 
+    # rays x coords 
+    rayx = []
+    rayz = []
+    for rc in all_ray_coords:
+        rx = [float(rr[0]) for rr in rc]
+        rz = [float(rr[2]) for rr in rc]
+        rayx.append(np.array(rx))
+        rayz.append(np.array(rz))
+
     # plot!
-    ax.scatter(rotated_rcoords_x[0], rotated_rcoords_z[0], c = 'Blue', s=10)
-    ax.scatter(rotated_rcoords_x, rotated_rcoords_z, s = 1, zorder = 103)
-    #if t_save:
-    #    ax.scatter(rotated_rcoords_x[t_save], rotated_rcoords_z[t_save], c = 'r', s=20, zorder=104)
+    if plot_wna == True:
+        lc = multiline(rayx, rayz, findmax_deg[:500], cmap='coolwarm', lw=2)
+        axcb = fig.colorbar(lc)
+        axcb.set_label('WNA [deg]')
+
+    else:
+        ax.scatter(rotated_rcoords_x, rotated_rcoords_z, c='cornflowerblue', s = 5, zorder = 4)
+    if t_save:
+        ax.scatter(rotated_rcoords_x[t_save], rotated_rcoords_z[t_save], marker='*', c = 'lightcoral', s=200, zorder=104)
 
     # final clean up
     # plot field lines (from IGRF13 model)
@@ -191,29 +270,52 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, md, t_save=
     Lshell_flines = get_Lshells(L_shells, tvec_datetime, crs, carsph, units)
     
     for lfline in Lshell_flines:
-        ax.plot(lfline[0], lfline[1], color='Black', linewidth=1, linestyle='dashed',zorder=3)
+        ax.plot(lfline[0], lfline[1], color='dimgrey', linewidth=1, linestyle='dashed',zorder=3)
 
     # find DSX
     dsx = sat()             # define a satellite object
     dsx.catnmbr = 44344     # provide NORAD ID
     dsx.time = ray_datenum  # set time
     dsx.getTLE_ephem()      # get TLEs nearest to this time -- sometimes this will lag
+    vpm = sat()             # define a satellite object    
+    vpm.catnmbr = 45120 
+    vpm.time = ray_datenum  # set time
+    vpm.getTLE_ephem()      # get TLEs nearest to this time -- sometimes this will lag
 
     dsx.propagatefromTLE(sec=0, orbit_dir='future', crs=crs, carsph='car', units=['Re','Re','Re'])
-    dsx_spot = dsx.pos
-    rotated_dsx = rotateplane(dsx_spot, tvec_datetime, crs, carsph, units)
-    plt.scatter(-1*dsx_spot[0][0],dsx_spot[0][2],marker='*',s=20,zorder=107)
+    vpm.propagatefromTLE(sec=0, orbit_dir='future', crs=crs, carsph='car', units=['Re','Re','Re'])
 
-    plt.xlabel('L (R$_E$)')
-    plt.ylabel('L (R$_E$)')
+    dsx_spot = dsx.pos
+    vpm_spot = vpm.pos
+    rotated_dsx = rotateplane(dsx_spot, tvec_datetime, crs, carsph, units)
+    rotated_vpm = rotateplane(vpm_spot, tvec_datetime, crs, carsph, units)
+    
+    plt.scatter(rotated_dsx[0][0],rotated_dsx[0][2],marker='*',c='goldenrod',s=200,zorder=5)
+    plt.scatter(rotated_vpm[0][0],rotated_vpm[0][2],marker='*',c='goldenrod',s=200,zorder=6)
+
+    plt.xlabel('L (R$_E$)', color='dimgrey')
+    plt.ylabel('L (R$_E$)', color='dimgrey')
     #plt.xlim([0, max(L_shells)])
-    plt.xlim([0, 3])
-    plt.ylim([-2, 2])
+    plt.xlim([0, 4])
+    plt.ylim([-1.75, 1.75])
+
+    ax.spines['bottom'].set_color('dimgrey')
+    ax.spines['top'].set_color('dimgrey') 
+    ax.spines['right'].set_color('dimgrey')
+    ax.spines['left'].set_color('dimgrey')
+    ax.tick_params(axis='x', colors='dimgrey')    #setting up X-axis tick color to red
+    ax.tick_params(axis='y', colors='dimgrey')  #setting up Y-axis tick color to black
+    ax.set_facecolor('white')
+
     
     if t_save:
         plt.savefig(ray_out_dir + '/figures/' + dt.datetime.strftime(ray_datenum, '%Y_%m_%d_%H%M%S') + '_' + str(round(w/(1e3*np.pi*2), 1)) + 'kHz' +'_2Dview' + str(md) + '_'+str(t_save)+ '.png',bbox_inches='tight')
+        rasterize_and_save(ray_out_dir + '/figures/' + dt.datetime.strftime(ray_datenum, '%Y_%m_%d_%H%M%S') + '_' + str(round(w/(1e3*np.pi*2), 1)) + 'kHz' +'_2Dview' + str(md) + '_'+str(t_save)+ '.svg', [ax], fig=fig, dpi=800)
+
     else:    
         plt.savefig(ray_out_dir + '/figures/' + dt.datetime.strftime(ray_datenum, '%Y_%m_%d_%H%M%S') + '_' + str(round(w/(1e3*np.pi*2), 1)) + 'kHz' +'_2Dview' + str(md) + '.png',bbox_inches='tight')
+        rasterize_and_save(ray_out_dir + '/figures/' + dt.datetime.strftime(ray_datenum, '%Y_%m_%d_%H%M%S') + '_' + str(round(w/(1e3*np.pi*2), 1)) + 'kHz' +'_2Dview' + str(md)+'.svg', [ax], fig=fig, dpi=800)
+
 
     if show_plot:
         plt.show()
@@ -224,100 +326,122 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, md, t_save=
 
 
 # ---------------------------------- PLOT REFRACTIVE SURFACE ----------------------------------------------------
-def plotrefractivesurface(ray_datenum, ray, ray_out_dir, t_save):
-    # set up phi vec
-    phi_vec = np.linspace(0,360,int(1e5))*D2R
-    w = ray['w']
+def plotrefractivesurface(ray_datenum, raylist, ray_out_dir, t_save):
+    import seaborn as sns
+
+    fig, ax = plt.subplots(1,1, figsize=(8,5))
+    colors = ['cornflowerblue','g','b']
+    for ii,ray in enumerate(raylist[0:1]):
+        # set up phi vec
+        phi_vec = np.linspace(0,360,int(1e5))*D2R
+        w = ray['w']
+        print(w/(np.pi*2))
+        
+        # comes in as SM car in m 
+        tmp_kcoords = list(zip((w/C) * ray['n'].x, (w/C) * ray['n'].y, (w/C) * ray['n'].z))
+
+        # convert to a unit vector first
+        unitk = [(tmp_kcoords[s][0], tmp_kcoords[s][1], tmp_kcoords[s][2]) / np.sqrt(tmp_kcoords[s][0]**2 + tmp_kcoords[s][1]**2 + tmp_kcoords[s][2]**2) for s in range(len(tmp_kcoords))]
+        kcoords = unitk
+
+        #int_plt = len(kcoords)//10
+        # ---------- plot it --------------------------
+        ti = 90
+        print(len(ray['time']))
+        #for ti, t in enumerate(ray['time']):
+            #if ti % int_plt == 0:
+            #if ti == t_save: 
+        print('plotting a refractive surface')
+        # get stix param
+        R, L, P, S, D = stix_parameters(ray, ti, w)
+        root = -1 # whistler solution
+
+        eta_vec = np.zeros_like(phi_vec)
+
+        # solution from antenna white paper!
+        resangle = np.arctan(np.sqrt(-P/S)) 
+
+        # find phi
+        B   =  ray['B0'].iloc[ti]
+        Bmag = np.linalg.norm(B)
+
+        wce = Q_EL*Bmag/M_EL
+
+        #gendrin_angle = 180 - (R2D*np.arccos(2*w/wce))
+        #print(gendrin_angle)
+
+        bunit = B/Bmag
+
+        kunit = np.array([kcoords[ti][0], kcoords[ti][1], kcoords[ti][2]])
+
+        alpha = np.arccos(np.dot(kunit, bunit))
+        alphaedg = float(alpha)*R2D
+
+        alpha_diff_last = 1
+
+        for phi_ind, phi  in enumerate(phi_vec):
+
+            # Solve the cold plasma dispersion relation
+            cos2phi = pow(np.cos(phi),2)
+            sin2phi = pow(np.sin(phi),2)
+
+            A = S*sin2phi + P*cos2phi
+            B = R*L*sin2phi + P*S*(1.0+cos2phi)
+
+            discriminant = B*B - 4.0*A*R*L*P
+            n1sq = (B + np.sqrt(discriminant))/(2.0*A)
+            n2sq = (B - np.sqrt(discriminant))/(2.0*A)
+
+            # negative refers to the fact that ^^^ B - sqrt
+            n1 = np.sqrt(n1sq)
+            n2 = np.sqrt(n2sq)
+
+            eta_vec[phi_ind] = n2
+
+            # save the angle near alpha (easier for plotting)
+            alpha_diff = np.abs(alpha - phi)
+            if alpha_diff < alpha_diff_last:
+                phi_ind_save = phi_ind
+            alpha_diff_last = alpha_diff
+
+
+    # plot the surface
+    ax.plot(eta_vec*np.sin(phi_vec), eta_vec*np.cos(phi_vec), c=colors[ii], LineWidth = 2, label = 'e + ions',zorder=6)
     
-    # comes in as SM car in m 
-    tmp_kcoords = list(zip((w/C) * ray['n'].x, (w/C) * ray['n'].y, (w/C) * ray['n'].z))
+    quiver_mag = eta_vec[phi_ind_save]
+    ax.scatter(0,0,marker='*',s=200,c='lightcoral',zorder=5)
 
-    # convert to a unit vector first
-    unitk = [(tmp_kcoords[s][0], tmp_kcoords[s][1], tmp_kcoords[s][2]) / np.sqrt(tmp_kcoords[s][0]**2 + tmp_kcoords[s][1]**2 + tmp_kcoords[s][2]**2) for s in range(len(tmp_kcoords))]
-    kcoords = unitk
+    xlim1 = -750
+    xlim2 = -xlim1
+    ylim1 = -50
+    ylim2 = -ylim1
 
-    #int_plt = len(kcoords)//10
+    ax.set_xlim([xlim1, xlim2])
+    ax.set_ylim([ylim1, ylim2])
+    ax.set_xlabel('Transverse Refractive Component',c='dimgrey')
+    ax.set_ylabel('Transverse Refractive Component',c='dimgrey')
+    ax.set_facecolor('w')
+    ax.spines['bottom'].set_color('dimgrey')
+    ax.spines['top'].set_color('dimgrey') 
+    ax.spines['right'].set_color('dimgrey')
+    ax.spines['left'].set_color('dimgrey')
+    ax.tick_params(axis='x', colors='dimgrey')    #setting up X-axis tick color to red
+    ax.tick_params(axis='y', colors='dimgrey')  #setting up Y-axis tick color to black
+    ax.set_ylabel('Transverse Refractive Component',c='dimgrey')
+    ax.plot([0, quiver_mag*np.sin(float(alpha))], [0, quiver_mag*np.cos(float(alpha))], linestyle=':', color='darkslategrey',zorder=4)
+    ax.plot([0, 100*quiver_mag*np.sin(float(resangle))], [0, 100*quiver_mag*np.cos(float(resangle))], linestyle=':', color='lightsteelblue',zorder=4)
+    ax.plot([0, -100*quiver_mag*np.sin(float(resangle))], [0, 100*quiver_mag*np.cos(float(resangle))], linestyle=':', color='lightsteelblue',zorder=4)
 
-    for ti, t in enumerate(ray['time']):
-        #if ti % int_plt == 0:
-        if ti == t_save: 
-            print('plotting a refractive surface')
-            # get stix param
-            R, L, P, S, D = stix_parameters(ray, ti, w)
-            root = -1 # whistler solution
+    #plt.legend(loc='upper right')
+    #ax.text(60, 65, r'$\alpha$' +  ' = ' + str(round(alphaedg,2)))
+    #ax.text(60, 55, r'$\beta$' +  ' = ' + str(round(resangle*R2D,2)))
+    
+    #plt.title(dt.datetime.strftime(ray_datenum, '%Y-%m-%d %H:%M:%S') + ' ' + str(round(w/(1e3*np.pi*2), 1)) + 'kHz \n refractive surface ')
+    #plt.savefig(ray_out_dir+'/refractive_surface'+str(ti)+'.png')
+    rasterize_and_save(ray_out_dir + '/figures/' + 'refractive_surface'+str(ti)+'.svg', [ax], fig=fig, dpi=800)
 
-            eta_vec = np.zeros_like(phi_vec)
-
-            # solution from antenna white paper!
-            #resangle = np.arctan(np.sqrt(-P/S)) 
-            #print(resangle)
-            # find phi
-            B   =  ray['B0'].iloc[ti]
-            Bmag = np.linalg.norm(B)
-
-            wce = Q_EL*Bmag/M_EL
-
-            gendrin_angle = 180 - (R2D*np.arccos(2*w/wce))
-
-            bunit = B/Bmag
-
-            kunit = np.array([kcoords[ti][0], kcoords[ti][1], kcoords[ti][2]])
-
-            alpha = np.arccos(np.dot(kunit, bunit))
-            alphaedg = float(alpha)*R2D
-
-            alpha_diff_last = 1
-
-            for phi_ind, phi  in enumerate(phi_vec):
-
-                # Solve the cold plasma dispersion relation
-                cos2phi = pow(np.cos(phi),2)
-                sin2phi = pow(np.sin(phi),2)
-
-                A = S*sin2phi + P*cos2phi
-                B = R*L*sin2phi + P*S*(1.0+cos2phi)
-
-                discriminant = B*B - 4.0*A*R*L*P
-                n1sq = (B + np.sqrt(discriminant))/(2.0*A)
-                n2sq = (B - np.sqrt(discriminant))/(2.0*A)
-
-                # negative refers to the fact that ^^^ B - sqrt
-                n1 = np.sqrt(n1sq)
-                n2 = np.sqrt(n2sq)
-
-                eta_vec[phi_ind] = n2
-
-                # save the angle near alpha (easier for plotting)
-                alpha_diff = np.abs(alpha - phi)
-                if alpha_diff < alpha_diff_last:
-                    phi_ind_save = phi_ind
-                alpha_diff_last = alpha_diff
-
-            # ---------- plot it --------------------------
-            fig, ax = plt.subplots(1,1, figsize=(8,5))
-
-            # plot the surface
-            ax.plot(eta_vec*np.sin(phi_vec), eta_vec*np.cos(phi_vec), 'gray', LineWidth = 1, label = 'e + ions')
-            
-            quiver_mag = eta_vec[phi_ind_save]
-            ax.plot([0, quiver_mag*np.sin(float(alpha))], [0, quiver_mag*np.cos(float(alpha))], 'r--')
-
-            xlim1 = -100
-            xlim2 = -xlim1
-            ylim1 = -100
-            ylim2 = -ylim1
-
-            ax.set_xlim([xlim1, xlim2])
-            ax.set_ylim([ylim1, ylim2])
-            ax.set_xlabel('Transverse Refractive Component')
-            #plt.legend(loc='upper right')
-            ax.text(60, 65, r'$\alpha$' +  ' = ' + str(round(alphaedg,2)))
-            ax.text(60, 55, r'$\beta$' +  ' = ' + str(round(gendrin_angle,2)))
-            
-            #plt.title(dt.datetime.strftime(ray_datenum, '%Y-%m-%d %H:%M:%S') + ' ' + str(round(w/(1e3*np.pi*2), 1)) + 'kHz \n refractive surface ')
-            plt.savefig(ray_out_dir+'/refractive_surface'+str(ti)+'.png')
-            plt.clf()
-            plt.close()
+    plt.clf()
+    plt.close()
 
 
     return
@@ -391,42 +515,98 @@ def plotNe(raylist):
 
 
 # ------------------------------------------- plot plasmasphere density (2D plot) --------------------------------------------
-def plot_plasmasphere_2D(md,kp):
-    fig, ax = plt.subplots(1,1)
+def plot_plasmasphere_2D(mds,kp):
+    import cmocean
+    import seaborn as sns
+    #sns.set(font='Franklin Gothic Book')
+    sns.set_context("notebook", rc={"font.size":16,
+                                    "axes.titlesize":18,
+                                    "axes.labelsize":12})
 
-    model_path = 'modeldumps/'
-    plasma_model_dump = os.path.join(model_path, 'model_dump_mode_'+str(md)+'_XY_'+str(kp)+'.dat')
-    d_xy = readdump(plasma_model_dump)
-    plasma_model_dump = os.path.join(model_path, 'model_dump_mode_'+str(md)+'_XZ_'+str(kp)+'.dat')
-    d_xz = readdump(plasma_model_dump)
-    plasma_model_dump = os.path.join(model_path, 'model_dump_mode_'+str(md)+'_YZ_'+str(kp)+'.dat')
-    d_yz = readdump(plasma_model_dump)
-    Ne_xy = d_xy['Ns'][0,:,:,:].squeeze().T
-    Ne_xy[np.isnan(Ne_xy)] = 0
-    Ne_xz = d_xz['Ns'][0,:,:,:].squeeze().T
-    Ne_xz[np.isnan(Ne_xz)] = 0
-    Ne_yz = d_yz['Ns'][0,:,:,:].squeeze().T
-    Ne_yz[np.isnan(Ne_yz)] = 0
+    ray_out_dir = '/media/rileyannereid/DEMETER/SR_output/2020-08-17_12_00_00'
+    if not os.path.exists(ray_out_dir+'/figures'):
+        os.makedirs(ray_out_dir+'/figures')
 
-    # Axis spacing depends on how the modeldump was ran
-    psize = 10
-    px = np.linspace(-10, 10, 200)
-    py = np.linspace(-10, 10, 200)
+    import cartopy
+    import cartopy.crs as ccrs
 
-    # Colorbar limits (log space)
-    clims = [-2, 5]
+    # chunk of code for the Earth
+    ax = plt.axes(projection=ccrs.Orthographic(central_longitude=0, central_latitude=0.0))
+    ax.add_feature(cartopy.feature.OCEAN, zorder=0)
+    ax.add_feature(cartopy.feature.LAND, zorder=0, edgecolor='black')
+    ax.coastlines()
+    plt.savefig(ray_out_dir+'/figures/ccrs_proj.png')
+    plt.cla()
 
-    # Plot background plasma 
-    g = plt.pcolormesh(px, py, np.log10(Ne_xz*10**(-6)), vmin=0,vmax=4, cmap = 'jet')
+    import matplotlib.patches as patches
+    import matplotlib.cbook as cbook
 
-    fig.colorbar(g, orientation="horizontal", pad = 0.1, label= 'Plasmasphere density #/cm^3')
-    earth = plt.Circle((0,0),1,color='k',alpha=1, zorder=100)
-    ax.add_patch(earth)   
-    plt.ylim([-4,4])
-    plt.xlim([0,8])
-    ax.set_aspect('equal')
+    img = plt.imread(ray_out_dir+'/figures/ccrs_proj.png', format='png')
+    
+    fig, axs = plt.subplots(nrows=2, ncols=1, sharex=True, sharey=True)#, figsize=(8,12))
+    # make this into a an image (sneaky)
+    for md,ax in zip(mds,axs):
 
-    plt.show()
+        im = ax.imshow(img, extent=[-1.75,1.75,-1.62,1.62],zorder=2) # not the most scientific
+        patch = patches.Circle((0, 0), radius=1, transform=ax.transData)
+        im.set_clip_path(patch)
+        
+        model_path = 'modeldumps/'
+        plasma_model_dump = os.path.join(model_path, 'model_dump_mode_'+str(md)+'_XY_'+str(kp)+'.dat')
+        d_xy = readdump(plasma_model_dump)
+        plasma_model_dump = os.path.join(model_path, 'model_dump_mode_'+str(md)+'_XZ_'+str(kp)+'.dat')
+        d_xz = readdump(plasma_model_dump)
+        plasma_model_dump = os.path.join(model_path, 'model_dump_mode_'+str(md)+'_YZ_'+str(kp)+'.dat')
+        d_yz = readdump(plasma_model_dump)
+        Ne_xy = d_xy['Ns'][0,:,:,:].squeeze().T
+        Ne_xy[np.isnan(Ne_xy)] = 0
+        Ne_xz = d_xz['Ns'][0,:,:,:].squeeze().T
+        Ne_xz[np.isnan(Ne_xz)] = 0
+        Ne_yz = d_yz['Ns'][0,:,:,:].squeeze().T
+        Ne_yz[np.isnan(Ne_yz)] = 0
+
+        # Axis spacing depends on how the modeldump was ran
+        psize = 10
+        px = np.linspace(-10, 10, 1000)
+        py = np.linspace(-10, 10, 1000)
+
+        # Plot background plasma 
+        g = ax.pcolormesh(px, py, np.log10(Ne_xz*10**(-6)), vmin=0,vmax=4, cmap = cmocean.cm.thermal)
+
+        #earth = plt.Circle((0,0),1,color='k',alpha=1, zorder=100)
+        #ax.add_patch(earth)   
+        
+        ax.set_ylim([-3,3])
+        ax.set_xlim([-7,7])
+        #ax.set_aspect('equal')
+        print('plotted mode ', md)
+    fig.subplots_adjust(right=0.88)
+    cbar_ax = fig.add_axes([0.85, 0.11, 0.02, 0.77])
+    cb = fig.colorbar(g, cax=cbar_ax,label= 'Plasmasphere Density #/cm^3')
+    axs[0].axes.xaxis.set_visible(False)
+    axs[0].annotate('Diffusive Eq.',(2,-2.7), c='w')
+    axs[1].annotate('GCPM',(4.2,-2.7), c='w')
+    axs[1].set_xlabel('L (R$_E$)')
+
+    axs[0].spines['bottom'].set_color('white')
+    axs[0].spines['top'].set_color('white') 
+    axs[0].spines['right'].set_color('white')
+    axs[0].spines['left'].set_color('white')
+
+    axs[1].spines['bottom'].set_color('white')
+    axs[1].spines['top'].set_color('white') 
+    axs[1].spines['right'].set_color('white')
+    axs[1].spines['left'].set_color('white')
+
+    #cbar_ax.spines['bottom'].set_color('white')
+    #cbar_ax.spines['top'].set_color('white') 
+    #cbar_ax.spines['right'].set_color('white')
+    #cbar_ax.spines['left'].set_color('white')
+    cb.outline.set_edgecolor('white')
+
+
+    plt.subplots_adjust(hspace=0.05)
+    rasterize_and_save('/home/rileyannereid/workspace/SR_interface/plasmasphere_models.svg', [axs[0],axs[1],cbar_ax], fig=fig, dpi=800)
     plt.close()
 
 # ------------------------------------------- END --------------------------------------------
@@ -464,16 +644,16 @@ def plot_plasmasphere_1D(md,kp):
         Ne_yz[np.isnan(Ne_yz)] = 0
         # Axis spacing depends on how the modeldump was ran
         psize = 10
-        px = np.linspace(-10, 10, 200)
-        py = np.linspace(-10, 10, 200)
+        px = np.linspace(-10, 10, 1000)
+        py = np.linspace(-10, 10, 1000)
 
-        plt.plot(-px,np.log10(Ne_yz[99,:]),cs[i])
+        plt.plot(-px,np.log10(Ne_xz[99,:]),cs[i])
 
     plt.xlabel('L shell')
     plt.ylabel('Log Equatorial Density (#/cm^3)')
 
-    plt.xlim([0.5,6])
-    plt.ylim([-1,12])
+    #plt.xlim([0.5,6])
+    #plt.ylim([-1,12])
     #plt.legend(['ngo','diff eq','gcpm'])
     #plt.legend([0,4])
     plt.legend(labels)
@@ -513,3 +693,142 @@ def plot_density_alongpath(ray_datenum, ray, ray_out_dir,t_save):
     #plt.show()
     plt.savefig(ray_out_dir+'/density_path'+str(t_save)+'.png')
     plt.close()
+
+def calc_fce(ray, t):
+
+    # get b field
+    B   =  ray['B0'].iloc[t]
+    Bmag = np.linalg.norm(B)
+    # get plasma species
+    # only want the electron charge and mass
+    Q    = np.abs(np.array(ray['qs'].iloc[t,0]))
+    M    = np.array(ray['ms'].iloc[t,0])
+
+    # cyclotron freq
+    Wce   = Q*Bmag/M
+
+    # convert to Hz
+    fce = Wce / (2*np.pi)
+    return fce
+
+def calc_gendrin(ray,t):
+
+    f = ray['w'] / (2 * np.pi)
+    fce = calc_fce(ray,t)
+
+    th_g = 180 - np.arccos(f/fce)
+
+    th_g = th_g * R2D
+
+    return th_g
+
+def rasterize_and_save(fname, rasterize_list=None, fig=None, dpi=None,
+                       savefig_kw={}):
+    """Save a figure with raster and vector components
+    This function lets you specify which objects to rasterize at the export
+    stage, rather than within each plotting call. Rasterizing certain
+    components of a complex figure can significantly reduce file size.
+    Inputs
+    ------
+    fname : str
+        Output filename with extension
+    rasterize_list : list (or object)
+        List of objects to rasterize (or a single object to rasterize)
+    fig : matplotlib figure object
+        Defaults to current figure
+    dpi : int
+        Resolution (dots per inch) for rasterizing
+    savefig_kw : dict
+        Extra keywords to pass to matplotlib.pyplot.savefig
+    If rasterize_list is not specified, then all contour, pcolor, and
+    collects objects (e.g., ``scatter, fill_between`` etc) will be
+    rasterized
+    Note: does not work correctly with round=True in Basemap
+    Example
+    -------
+    Rasterize the contour, pcolor, and scatter plots, but not the line
+    >>> import matplotlib.pyplot as plt
+    >>> from numpy.random import random
+    >>> X, Y, Z = random((9, 9)), random((9, 9)), random((9, 9))
+    >>> fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(ncols=2, nrows=2)
+    >>> cax1 = ax1.contourf(Z)
+    >>> cax2 = ax2.scatter(X, Y, s=Z)
+    >>> cax3 = ax3.pcolormesh(Z)
+    >>> cax4 = ax4.plot(Z[:, 0])
+    >>> rasterize_list = [cax1, cax2, cax3]
+    >>> rasterize_and_save('out.svg', rasterize_list, fig=fig, dpi=300)
+    """
+
+    # Behave like pyplot and act on current figure if no figure is specified
+    fig = plt.gcf() if fig is None else fig
+
+    # Need to set_rasterization_zorder in order for rasterizing to work
+    zorder = -5  # Somewhat arbitrary, just ensuring less than 0
+
+    if rasterize_list is None:
+        # Have a guess at stuff that should be rasterised
+        types_to_raster = ['QuadMesh', 'Contour', 'collections']
+        rasterize_list = []
+
+        print("""
+        No rasterize_list specified, so the following objects will
+        be rasterized: """)
+        # Get all axes, and then get objects within axes
+        for ax in fig.get_axes():
+            for item in ax.get_children():
+                if any(x in str(item) for x in types_to_raster):
+                    rasterize_list.append(item)
+        print('\n'.join([str(x) for x in rasterize_list]))
+    else:
+        # Allow rasterize_list to be input as an object to rasterize
+        if type(rasterize_list) != list:
+            rasterize_list = [rasterize_list]
+
+    for item in rasterize_list:
+
+        # Whether or not plot is a contour plot is important
+        is_contour = (isinstance(item, matplotlib.contour.QuadContourSet) or
+                      isinstance(item, matplotlib.tri.TriContourSet))
+
+        # Whether or not collection of lines
+        # This is commented as we seldom want to rasterize lines
+        # is_lines = isinstance(item, matplotlib.collections.LineCollection)
+
+        # Whether or not current item is list of patches
+        all_patch_types = tuple(
+            x[1] for x in getmembers(matplotlib.patches, isclass))
+        try:
+            is_patch_list = isinstance(item[0], all_patch_types)
+        except TypeError:
+            is_patch_list = False
+
+        # Convert to rasterized mode and then change zorder properties
+        if is_contour:
+            curr_ax = item.ax.axes
+            curr_ax.set_rasterization_zorder(zorder)
+            # For contour plots, need to set each part of the contour
+            # collection individually
+            for contour_level in item.collections:
+                contour_level.set_zorder(zorder - 1)
+                contour_level.set_rasterized(True)
+        elif is_patch_list:
+            # For list of patches, need to set zorder for each patch
+            for patch in item:
+                curr_ax = patch.axes
+                curr_ax.set_rasterization_zorder(zorder)
+                patch.set_zorder(zorder - 1)
+                patch.set_rasterized(True)
+        else:
+            # For all other objects, we can just do it all at once
+            curr_ax = item.axes
+            curr_ax.set_rasterization_zorder(zorder)
+            item.set_rasterized(True)
+            item.set_zorder(zorder - 1)
+
+    # dpi is a savefig keyword argument, but treat it as special since it is
+    # important to this function
+    if dpi is not None:
+        savefig_kw['dpi'] = dpi
+
+    # Save resulting figure
+    fig.savefig(fname, **savefig_kw, tight_layout=True)

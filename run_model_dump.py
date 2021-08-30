@@ -360,6 +360,7 @@ def modeldump(ray_datenum,md):
 
           #print("doing model %d, %s plane" % (mode, plane))
           maxD = 10.0 * R_E
+          resolution_f = 1000
           if plane == 'XZ':
               minx = -maxD
               maxx = maxD
@@ -367,9 +368,9 @@ def modeldump(ray_datenum,md):
               maxy = 0
               minz = -maxD
               maxz = maxD
-              nx = 200
+              nx = resolution_f
               ny = 1
-              nz = 200
+              nz = resolution_f
           if plane == 'XY':
               minx = -maxD
               maxx = maxD
@@ -377,8 +378,8 @@ def modeldump(ray_datenum,md):
               maxy = maxD
               minz = 0
               maxz = 0
-              nx = 200
-              ny = 200
+              nx = resolution_f
+              ny = resolution_f
               nz = 1
           if plane == 'YZ':
               minx = 0
@@ -388,8 +389,8 @@ def modeldump(ray_datenum,md):
               minz = -maxD
               maxz = maxD
               nx = 1
-              ny = 200
-              nz = 200
+              ny = resolution_f
+              nz = resolution_f
 
           # model_outfile='model_dump_mode%d_%d_%s.dat'%(modelnum, use_IGRF, plane)
           if mag_dump:

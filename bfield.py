@@ -58,10 +58,10 @@ def getBline(pos, ray_datenum,stopalt):
 # a helper func to run a ray to get the most accuarate Bfield 
 # use for defining wavenormals
 
-def getBdir(ray_start, ray_datenum, rayfile_directory, thetas, phis, md, select_random=False):
+def getBdir(ray_start, ray_datenum, rayfile_directory, thetas, phis, md, freq, select_random=False):
     positions = ray_start
     directions = [(0,0,0)]
-    freqs = [15e3]
+    freqs = [freq]
     # going to run a ray real quick
     single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory, md, runmodeldump=False)
 
