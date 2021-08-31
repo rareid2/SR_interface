@@ -60,3 +60,26 @@ we need to clean up the version of shapely -- it breaks cartopy sometimes
 Run the following lines  
 ```pip3 uninstall shapely```  
 ```pip3 install shapely --no-binary shapely```  
+
+
+## A quick tour around the repo: 
+bfield.py -- a quick function to set ray directions, either randomly around the magnetic field line, or at specified angles. If you want field aligned rays, either input (0,0,0) to go north, or use PyGeoPack to go south
+
+constants_settings.py -- a file with all constants and settings (environment and simulation) to be imported into all other files in this repo
+
+convert_coords.py -- a conversion function between coordinate systems that matches the fortran in the ray tracers (uses libxformd), it also supports SM, GEI, and GEO cartesian/spherical
+
+example_call.py -- an example of how to run the raytracer
+
+ray_plots.py -- a huge script with a LOT of plotting tools
+
+raytracer_utils.py -- reads the output of the raytracer and damping
+
+run_model_dump.py -- this sets the plasmasphere (ngo model only) and the dump runs of the model in use
+in general you will likely not need this unless you want to plot the plasmasphere
+
+run_rays.py -- call the raytracer! you need Stanford Raytracer built on your computer to use these functions
+
+satellites.py -- class to get satellite positions using most accurate TLEs for the specified date. Also propagates orbits
+
+SLTrack.ini -- settings to access the TLEs for satellites online. Feel free to change to your own account if you want (or if mine is maxing out)

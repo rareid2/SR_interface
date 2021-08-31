@@ -13,5 +13,3 @@ libxformd/__pycache__/*
 *.o
 *.a
 *.so
-
-pyglow/*

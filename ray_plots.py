@@ -1,24 +1,27 @@
 # import needed packages
 import numpy as np
-import matplotlib as mpl 
+import datetime as dt
+import os 
+import seaborn as sns
+
+# plotting
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
-import datetime as dt
+from matplotlib.colors import ListedColormap
+from matplotlib.collections import LineCollection
+from inspect import getmembers, isclass
+
+# import funcs from this repo
 from constants_settings import *
 from convert_coords import convert2
 from raytracer_utils import readdump
 from bfield import getBline
-import os 
-from spacepy import coordinates as coord
-from spacepy.time import Ticktock
-import matplotlib.pylab as pl
-from matplotlib.colors import ListedColormap
-from matplotlib.collections import LineCollection
-import matplotlib
-from inspect import getmembers, isclass
 from satellites import sat
 
+
 # ------------------------- thank u stack overflow -------------------------
+# this function is used when you use plotray2d and turn plotwavenormals on
+
 def multiline(xs, ys, c, ax=None, **kwargs):
     """Plot lines with different colorings
 
@@ -122,73 +125,97 @@ def get_Lshells(lshells, tvec_datetime, crs, carsph, units):
 
 
 #---------------------------------------------------------------------------
-def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, md, checklat, t_save=None, plot_wna=False, show_plot=True, damping_vals=None):
+def plotray2D(ray_datenum, raylist, ray_out_dir, crs, units, md, show_plot=True, return_nmax=False, checklat=None):
+
+    # give it date, the rays, the output directory to save too, the desired coordinates to plot in
+    # and the mode
+
+    # show plot will pull up the plot or not
+
+    # return_nmax = true or false, returns the max index of refraction (useful for other stuff)
+    # this will make a plot with color indicating the wna
+    # if return_nmax is true, you need checklat to be either greater than 0 for northern direction or negative for southern direction
 
     # !!!!!!! ONLY suports cartesian plotting!
+
+    n_rays_plot = 500 # (dont plot more than 500 on the same plot it looks like chaos)
+
     # make figures directory if doesnt exist
     if not os.path.exists(ray_out_dir+'/figures'):
         os.makedirs(ray_out_dir+'/figures')
 
-    # first, find the max index of refraction (useful for ray spot plots)
-    findmax_deg = []
-    # convert to desired coordinate system into vector list rays
-    ray_coords = []
+    if return_nmax == True:
+        # first, find the max index of refraction (useful for ray spot plots)
+        findmax_deg = []
+        # convert to desired coordinate system into vector list rays
+        ray_coords = []
 
-    # loop through the rays -- NEED ALL THE RAYS
-    for ri, r in enumerate(raylist):
-        B   =  r['B0'].iloc[0]
-        Bmag = np.linalg.norm(B)
-        bunit = B/Bmag
+        # loop through the rays -- NEED ALL THE RAYS
+        for ri, r in enumerate(raylist):
+            B   =  r['B0'].iloc[0]
+            Bmag = np.linalg.norm(B)
+            bunit = B/Bmag
 
-        # get the initial wna (already confirmed this is equiv to the initial)
-        w = r['w']
-        kveci = [(w/C)*r['n'].x.iloc[0],(w/C)*r['n'].y.iloc[0],(w/C)*r['n'].z.iloc[0]]
-        kunit = np.array(kveci)/np.linalg.norm(kveci)
+            # get the initial wna (already confirmed this is equiv to the initial)
+            w = r['w']
+            kveci = [(w/C)*r['n'].x.iloc[0],(w/C)*r['n'].y.iloc[0],(w/C)*r['n'].z.iloc[0]]
+            kunit = np.array(kveci)/np.linalg.norm(kveci)
 
-        # alpha is wna
-        alpha = np.arccos(np.dot(kunit, bunit))
-        alphaedg = float(alpha)*R2D
-        if checklat < 0:
-            alphaedg = 180 - alphaedg
-        if alphaedg > 90:
-            alphaedg = 90 - (alphaedg - 90)
-        findmax_deg.append(alphaedg)
+            # alpha is wna
+            alpha = np.arccos(np.dot(kunit, bunit))
+            alphaedg = float(alpha)*R2D
+            if checklat < 0:
+                alphaedg = 180 - alphaedg
+            if alphaedg > 90:
+                alphaedg = 90 - (alphaedg - 90)
+            findmax_deg.append(alphaedg)
 
         
-        # only want to plot 100 rays to visualize
-        if ri < 500:
-            # comes in as SM car in m 
-            tmp_coords = list(zip(r['pos'].x, r['pos'].y, r['pos'].z))
-            nmag = np.sqrt(r['n'].x.iloc[0]**2 +r['n'].y.iloc[0]**2+r['n'].z.iloc[0]**2)
-            tvec_datetime = [ray_datenum + dt.timedelta(seconds=s) for s in r['time']]
-            new_coords = convert2(tmp_coords, tvec_datetime, 'SM', 'car', ['m','m','m'], crs, carsph, units)
+            # only want to plot 500 rays to visualize
+            if ri < n_rays_plot:
+                # comes in as SM car in m 
+                tmp_coords = list(zip(r['pos'].x, r['pos'].y, r['pos'].z))
+                nmag = np.sqrt(r['n'].x.iloc[0]**2 +r['n'].y.iloc[0]**2+r['n'].z.iloc[0]**2)
+                tvec_datetime = [ray_datenum + dt.timedelta(seconds=s) for s in r['time']]
+                new_coords = convert2(tmp_coords, tvec_datetime, 'SM', 'car', ['m','m','m'], crs, carsph, units)
 
-            # save it
-            ray_coords.append(new_coords) 
+                # save it
+                ray_coords.append(new_coords) 
 
-    # find max 
-    max_wna = max(findmax_deg)  
-    max_wna_ind = findmax_deg.index(max(findmax_deg))
-    rm = raylist[max_wna_ind]
-    nmax = np.sqrt(rm['n'].x.iloc[0]**2 +rm['n'].y.iloc[0]**2+rm['n'].z.iloc[0]**2)
-    
+        # find max 
+        max_wna = max(findmax_deg)  
+        max_wna_ind = findmax_deg.index(max(findmax_deg))
+        rm = raylist[max_wna_ind]
+        nmax = np.sqrt(rm['n'].x.iloc[0]**2 +rm['n'].y.iloc[0]**2+rm['n'].z.iloc[0]**2)
+
+    else:
+        # convert to desired coordinate system into vector list rays
+        ray_coords = []
+
+        # loop through the rays -- NEED ALL THE RAYS
+        for ri, r in enumerate(raylist):
+            # only want to plot n_rays_plot rays to visualize -- change this if you want to plot more (but it will get crowded)
+            if ri < n_rays_plot:
+                # comes in as SM car in m 
+                tmp_coords = list(zip(r['pos'].x, r['pos'].y, r['pos'].z))
+                tvec_datetime = [ray_datenum + dt.timedelta(seconds=s) for s in r['time']]
+                new_coords = convert2(tmp_coords, tvec_datetime, 'SM', 'car', ['m','m','m'], crs, carsph, units)
+
+                # save it
+                ray_coords.append(new_coords) 
+
     # -------------------------------- PLOTTING --------------------------------
-    import seaborn as sns
-
+    # just some beuatification
     sns.set_context("notebook", rc={"font.size":16,
                                     "axes.titlesize":18,
                                     "axes.labelsize":12})
     sns.set(font='Franklin Gothic Book',
-        rc={
- 'patch.edgecolor': 'w',
- 'patch.force_edgecolor': True,
-})
+        rc={'patch.edgecolor': 'w','patch.force_edgecolor': True,})
 
-    
+    # this is all just to get a picture of the Earth on it lol
     ray1 = ray_coords[0][0]
     # this is GEO for the Earth plot
     ray1_sph = convert2([ray1], tvec_datetime, crs, carsph, units, 'GEO', 'sph', ['m','deg','deg'])
-
     # find ray starting long just for Earth
     long_r = ray1_sph[0][2]
     # convert for cartopy issues
@@ -254,15 +281,12 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, md, checkla
         rayz.append(np.array(rz))
 
     # plot!
-    if plot_wna == True:
-        lc = multiline(rayx, rayz, findmax_deg[:500], cmap='coolwarm', lw=2)
+    if return_nmax == True:
+        lc = multiline(rayx, rayz, findmax_deg[:n_rays_plot], cmap='coolwarm', lw=2)
         axcb = fig.colorbar(lc)
         axcb.set_label('WNA [deg]')
-
     else:
         ax.scatter(rotated_rcoords_x, rotated_rcoords_z, c='cornflowerblue', s = 5, zorder = 4)
-    if t_save:
-        ax.scatter(rotated_rcoords_x[t_save], rotated_rcoords_z[t_save], marker='*', c = 'lightcoral', s=200, zorder=104)
 
     # final clean up
     # plot field lines (from IGRF13 model)
@@ -272,6 +296,8 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, md, checkla
     for lfline in Lshell_flines:
         ax.plot(lfline[0], lfline[1], color='dimgrey', linewidth=1, linestyle='dashed',zorder=3)
 
+    # if you wanted to add satellites, here's an example
+    """
     # find DSX
     dsx = sat()             # define a satellite object
     dsx.catnmbr = 44344     # provide NORAD ID
@@ -292,7 +318,9 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, md, checkla
     
     plt.scatter(rotated_dsx[0][0],rotated_dsx[0][2],marker='*',c='goldenrod',s=200,zorder=5)
     plt.scatter(rotated_vpm[0][0],rotated_vpm[0][2],marker='*',c='goldenrod',s=200,zorder=6)
+    """
 
+    # some clean up 
     plt.xlabel('L (R$_E$)', color='dimgrey')
     plt.ylabel('L (R$_E$)', color='dimgrey')
     #plt.xlim([0, max(L_shells)])
@@ -307,35 +335,35 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, carsph, units, md, checkla
     ax.tick_params(axis='y', colors='dimgrey')  #setting up Y-axis tick color to black
     ax.set_facecolor('white')
 
-    
-    if t_save:
-        plt.savefig(ray_out_dir + '/figures/' + dt.datetime.strftime(ray_datenum, '%Y_%m_%d_%H%M%S') + '_' + str(round(w/(1e3*np.pi*2), 1)) + 'kHz' +'_2Dview' + str(md) + '_'+str(t_save)+ '.png',bbox_inches='tight')
-        rasterize_and_save(ray_out_dir + '/figures/' + dt.datetime.strftime(ray_datenum, '%Y_%m_%d_%H%M%S') + '_' + str(round(w/(1e3*np.pi*2), 1)) + 'kHz' +'_2Dview' + str(md) + '_'+str(t_save)+ '.svg', [ax], fig=fig, dpi=800)
-
     else:    
         plt.savefig(ray_out_dir + '/figures/' + dt.datetime.strftime(ray_datenum, '%Y_%m_%d_%H%M%S') + '_' + str(round(w/(1e3*np.pi*2), 1)) + 'kHz' +'_2Dview' + str(md) + '.png',bbox_inches='tight')
         rasterize_and_save(ray_out_dir + '/figures/' + dt.datetime.strftime(ray_datenum, '%Y_%m_%d_%H%M%S') + '_' + str(round(w/(1e3*np.pi*2), 1)) + 'kHz' +'_2Dview' + str(md)+'.svg', [ax], fig=fig, dpi=800)
-
 
     if show_plot:
         plt.show()
     plt.close()
 
-    return nmax
+
+    if return_nmax:
+        return nmax
+    else:
+        return
 # --------------------------------------------------------------------------------------
 
 
 # ---------------------------------- PLOT REFRACTIVE SURFACE ----------------------------------------------------
-def plotrefractivesurface(ray_datenum, raylist, ray_out_dir, t_save):
-    import seaborn as sns
+def plotrefractivesurface(ray_datenum, raylist, ray_out_dir, ti):
+
+    # ti is the index that you want to plot the refractive surface at
+    # ti = 0 is at the ray start point
+    # ti = 10 is the tenth time step etc.
 
     fig, ax = plt.subplots(1,1, figsize=(8,5))
     colors = ['cornflowerblue','g','b']
-    for ii,ray in enumerate(raylist[0:1]):
+    for ii,ray in enumerate(raylist):
         # set up phi vec
         phi_vec = np.linspace(0,360,int(1e5))*D2R
         w = ray['w']
-        print(w/(np.pi*2))
         
         # comes in as SM car in m 
         tmp_kcoords = list(zip((w/C) * ray['n'].x, (w/C) * ray['n'].y, (w/C) * ray['n'].z))
@@ -344,14 +372,9 @@ def plotrefractivesurface(ray_datenum, raylist, ray_out_dir, t_save):
         unitk = [(tmp_kcoords[s][0], tmp_kcoords[s][1], tmp_kcoords[s][2]) / np.sqrt(tmp_kcoords[s][0]**2 + tmp_kcoords[s][1]**2 + tmp_kcoords[s][2]**2) for s in range(len(tmp_kcoords))]
         kcoords = unitk
 
-        #int_plt = len(kcoords)//10
         # ---------- plot it --------------------------
-        ti = 90
-        print(len(ray['time']))
-        #for ti, t in enumerate(ray['time']):
-            #if ti % int_plt == 0:
-            #if ti == t_save: 
         print('plotting a refractive surface')
+
         # get stix param
         R, L, P, S, D = stix_parameters(ray, ti, w)
         root = -1 # whistler solution
@@ -374,6 +397,7 @@ def plotrefractivesurface(ray_datenum, raylist, ray_out_dir, t_save):
 
         kunit = np.array([kcoords[ti][0], kcoords[ti][1], kcoords[ti][2]])
 
+        # find wna
         alpha = np.arccos(np.dot(kunit, bunit))
         alphaedg = float(alpha)*R2D
 
@@ -408,7 +432,13 @@ def plotrefractivesurface(ray_datenum, raylist, ray_out_dir, t_save):
     # plot the surface
     ax.plot(eta_vec*np.sin(phi_vec), eta_vec*np.cos(phi_vec), c=colors[ii], LineWidth = 2, label = 'e + ions',zorder=6)
     
+    # plot the k-vec
     quiver_mag = eta_vec[phi_ind_save]
+    ax.plot([0, quiver_mag*np.sin(float(alpha))], [0, quiver_mag*np.cos(float(alpha))], linestyle=':', color='darkslategrey',zorder=4)
+    ax.plot([0, 100*quiver_mag*np.sin(float(resangle))], [0, 100*quiver_mag*np.cos(float(resangle))], linestyle=':', color='lightsteelblue',zorder=4)
+    ax.plot([0, -100*quiver_mag*np.sin(float(resangle))], [0, 100*quiver_mag*np.cos(float(resangle))], linestyle=':', color='lightsteelblue',zorder=4)
+
+    # mark the origin
     ax.scatter(0,0,marker='*',s=200,c='lightcoral',zorder=5)
 
     xlim1 = -750
@@ -416,6 +446,7 @@ def plotrefractivesurface(ray_datenum, raylist, ray_out_dir, t_save):
     ylim1 = -50
     ylim2 = -ylim1
 
+    # just beautification
     ax.set_xlim([xlim1, xlim2])
     ax.set_ylim([ylim1, ylim2])
     ax.set_xlabel('Transverse Refractive Component',c='dimgrey')
@@ -428,13 +459,9 @@ def plotrefractivesurface(ray_datenum, raylist, ray_out_dir, t_save):
     ax.tick_params(axis='x', colors='dimgrey')    #setting up X-axis tick color to red
     ax.tick_params(axis='y', colors='dimgrey')  #setting up Y-axis tick color to black
     ax.set_ylabel('Transverse Refractive Component',c='dimgrey')
-    ax.plot([0, quiver_mag*np.sin(float(alpha))], [0, quiver_mag*np.cos(float(alpha))], linestyle=':', color='darkslategrey',zorder=4)
-    ax.plot([0, 100*quiver_mag*np.sin(float(resangle))], [0, 100*quiver_mag*np.cos(float(resangle))], linestyle=':', color='lightsteelblue',zorder=4)
-    ax.plot([0, -100*quiver_mag*np.sin(float(resangle))], [0, 100*quiver_mag*np.cos(float(resangle))], linestyle=':', color='lightsteelblue',zorder=4)
-
+    
     #plt.legend(loc='upper right')
     #ax.text(60, 65, r'$\alpha$' +  ' = ' + str(round(alphaedg,2)))
-    #ax.text(60, 55, r'$\beta$' +  ' = ' + str(round(resangle*R2D,2)))
     
     #plt.title(dt.datetime.strftime(ray_datenum, '%Y-%m-%d %H:%M:%S') + ' ' + str(round(w/(1e3*np.pi*2), 1)) + 'kHz \n refractive surface ')
     #plt.savefig(ray_out_dir+'/refractive_surface'+str(ti)+'.png')
@@ -662,7 +689,6 @@ def plot_plasmasphere_1D(md,kp):
     plt.close()
 
 # ------------------------------------------- END --------------------------------------------
-#plot_plasmasphere_1D(7,1)
 
 
 def plot_density_alongpath(ray_datenum, ray, ray_out_dir,t_save):

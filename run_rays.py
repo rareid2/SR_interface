@@ -10,6 +10,7 @@ from raytracer_utils import get_yearmiliday
 
 def single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory, mode, runmodeldump=False):
 
+    # this is just a silly way to get the names of the workers
     fp = str(multiprocessing.current_process())[19:36]
     fp = fp.replace("'",'')
     if len(fp) < 17:

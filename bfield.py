@@ -58,7 +58,21 @@ def getBline(pos, ray_datenum,stopalt):
 # a helper func to run a ray to get the most accuarate Bfield 
 # use for defining wavenormals
 
-def getBdir(ray_start, ray_datenum, rayfile_directory, thetas, phis, md, freq, select_random=False):
+# inputs! 
+# start pos (one position array)
+# ray_datenum (one time)
+# rayfile directory (one directory)
+
+# if select_random = True
+# thetas and phis are passed in as list of zeros of length nrays
+# hemimult = 1 for north, -1 for south
+
+# if select_random=False
+# thetas and phis are passed in as list of length nrays where each pair is the desired polar and azimuthal angle to launch from
+
+# output is converted_dirs (unit vector w directions) the resonance cone angle, and the thetas and phis passed in
+
+def getBdir(ray_start, ray_datenum, rayfile_directory, thetas, phis, hemimult, md, freq, select_random=False):
     positions = ray_start
     directions = [(0,0,0)]
     freqs = [freq]
@@ -97,7 +111,6 @@ def getBdir(ray_start, ray_datenum, rayfile_directory, thetas, phis, md, freq, s
     # if select random was chosen, thetas and phis are passed in as list of zeros of length nrays
     if select_random == True:
         nrays = len(thetas)
-        hemi_mult = thetas[0]
         thetas = []
         phis = []
         resangle_deg = resangle *180/np.pi
