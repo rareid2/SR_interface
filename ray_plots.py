@@ -334,10 +334,9 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, units, md, show_plot=True,
     ax.tick_params(axis='x', colors='dimgrey')    #setting up X-axis tick color to red
     ax.tick_params(axis='y', colors='dimgrey')  #setting up Y-axis tick color to black
     ax.set_facecolor('white')
-
-    else:    
-        plt.savefig(ray_out_dir + '/figures/' + dt.datetime.strftime(ray_datenum, '%Y_%m_%d_%H%M%S') + '_' + str(round(w/(1e3*np.pi*2), 1)) + 'kHz' +'_2Dview' + str(md) + '.png',bbox_inches='tight')
-        rasterize_and_save(ray_out_dir + '/figures/' + dt.datetime.strftime(ray_datenum, '%Y_%m_%d_%H%M%S') + '_' + str(round(w/(1e3*np.pi*2), 1)) + 'kHz' +'_2Dview' + str(md)+'.svg', [ax], fig=fig, dpi=800)
+    
+    plt.savefig(ray_out_dir + '/figures/' + dt.datetime.strftime(ray_datenum, '%Y_%m_%d_%H%M%S') + '_' + str(round(w/(1e3*np.pi*2), 1)) + 'kHz' +'_2Dview' + str(md) + '.png',bbox_inches='tight')
+    rasterize_and_save(ray_out_dir + '/figures/' + dt.datetime.strftime(ray_datenum, '%Y_%m_%d_%H%M%S') + '_' + str(round(w/(1e3*np.pi*2), 1)) + 'kHz' +'_2Dview' + str(md)+'.svg', [ax], fig=fig, dpi=800)
 
     if show_plot:
         plt.show()
