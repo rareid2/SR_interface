@@ -13,12 +13,7 @@ OR
 (depends on your system)
 
 next to download packages, run the following lines (requirements txt keeps breaking w spacepy):   
-```pip3 install numpy```  
-```pip3 install matplotlib```  
-```pip3 install spacepy```  
-```pip3 install requests```  
-```pip3 install sgp4```  
-```pip3 install pandas```
+```pip install -r requirements.txt```
 
 And a folder for fieldline tracing with IGRF called PyGeopack needs to be installed. To get this, first run:
 ```export KPDATA_PATH=/path/to/kp```
