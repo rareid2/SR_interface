@@ -11,14 +11,17 @@ from ray_plots import plotray2D, plotrefractivesurface, plot_plasmasphere_2D
 
 # example call to ray tracer!
 # --------------------------------------- set up ------------------------------------------
+# STEP 1 - set the output directory
 rayfile_directory = '/media/rileyannereid/DEMETER/SR_output' # store output here
 
-# FIRST, navigate to constants_settings and make sure the settings are correct for the run
+# STEP 2 - navigate to constants_settings.py and make sure the settings are correct for the run
 
-# let's look at a conjunction between DSX and VPM:
+# STEP 3 - set the date and time
 # use the datetime package to define the start time -- make sure to use UTC timezone
-ray_datenum = dt.datetime(2020,6,6,19,56,9, tzinfo=dt.timezone.utc)
+ray_datenum = dt.datetime(2020,6,6,19,55,0, tzinfo=dt.timezone.utc)
 
+# STEP 4 - set the start position
+# here's how to get it from satellites: 
 # we need the positions of the satellites -- use the sat class
 dsx = sat()             # define a satellite object
 dsx.catnmbr = 44344     # provide NORAD ID
@@ -31,53 +34,48 @@ dsx.propagatefromTLE(sec=0, orbit_dir='future', crs='SM', carsph='car', units=['
 # now we have ray start point in the correct coordinates (SM cartesian in m)
 ray_start = dsx.pos
 
-freqs = [2.8e3, 8.2e3, 28e3] # Hz
+# here's how to get it from a start location in GEO coords 
+start_lat = 50
+start_lon = 0
+start_alt = 1000e3 # m
+ray_start = convert2([[start_alt+R_E,start_lat,start_lon]], [ray_datenum],'GEO','sph',['m','deg','deg'], 'SM', 'car', ['m','m','m'])
 
-# Which plasmasphere model should we run?
+# STEP 5 - set freq in Hz
+freqs = [8e3] # Hz
+
+# STEP 6 - which plasmasphere model should we run?
 #   6 - Simplified GCPM from Austin Sousa's thesis
 #   7 - New! Diffusive Equilibrium AT64ThCh (see docs)
 md = 7
 
-# how many rays? 
-nrays = 3 # how many rays -- THIS MUST BE EQUAL IN LENGTH TO THETAS
+# STEP 7 - how many rays? 
+nrays = 1
 
-# next, define the direction of the ray
-# this step will actually run the raytracer to sample the Bfield correctly
-# theta = 0 goes north, theta=180 goes south
-thetas = [-45 for i in range(1)] # go south
-directions = []
-for i in range(nrays):
-    freq = freqs[i]
-    direc, ra, thetas, phis = getBdir(ray_start, ray_datenum, rayfile_directory, thetas, np.zeros(len(thetas)), md, freq)
+# STEP 8 - in what direction should the ray point? 
+# set theta as the initial wavenormal angle from Bdir
+# range from -90 to 90 deg will go north, 90 to 270 will go south
+thetas = [180]
+# phi is in the longitudanal direction
+phis = [0]
+# hemimult = 1 for noth, -1 for south
+hemimult = -1
+directions, ra, thetas, phis = getBdir(ray_start, ray_datenum, rayfile_directory, thetas, phis, hemimult, md, freqs[0])
 
-    directions.append(direc[0])
-
-
-positions = [ray_start[0] for n in range(nrays)]
-#freqs = [freq for n in range(nrays)]
-
-# --------------------------------------- run ---------------------------------------------
-# time to run is about 1 sec every 10 rays 
-#single_run_rays(ray_datenum, positions, directions, freqs, rayfile_directory, md, runmodeldump=False)
-plot_plasmasphere_1D(7,1)
-"""
-# OR run parallel at different times -- use parallel_run_rays and input a list of times, and LIST OF LISTS with positions, 
-# directions, and frequencies
-"""
+# STEP 9 - run, time to run is about 1 sec every 10 rays 
+single_run_rays(ray_datenum, ray_start, directions, freqs, rayfile_directory, md, runmodeldump=False)
 
 # ------------------------------------- output -------------------------------------------------
-# that's it! let's look at output
+# STEP 10 - that's it! let's look at output
 
 # Load all the rayfiles in the output directory
 ray_out_dir = rayfile_directory + '/'+dt.datetime.strftime(ray_datenum, '%Y-%m-%d_%H_%M_%S')
 file_titles = os.listdir(ray_out_dir)
 
-# create empty lists to fill with ray files and damp files
+# create empty lists to fill with ray files
 raylist = []
-damplist = []
 for filename in file_titles:
     if '.ray' in filename and str(md) in filename:
         raylist += read_rayfile(os.path.join(ray_out_dir, filename))
 
-plotray2D(ray_datenum, [raylist[0]], ray_out_dir, 'GEO', 'car', ['Re','Re','Re'], md, -10,show_plot=False, t_save=90)
-plotrefractivesurface(ray_datenum, raylist, ray_out_dir, 0)
+# example plot
+plotray2D(ray_datenum, raylist, ray_out_dir, 'GEO', ['Re','Re','Re'], md, show_plot=True)

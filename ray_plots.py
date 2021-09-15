@@ -6,10 +6,13 @@ import seaborn as sns
 
 # plotting
 import matplotlib.pyplot as plt
-from matplotlib.patches import Circle
+import matplotlib.patches as patches
+import matplotlib.cbook as cbook
 from matplotlib.colors import ListedColormap
 from matplotlib.collections import LineCollection
 from inspect import getmembers, isclass
+import matplotlib.contour as mpc
+import matplotlib.tri as mpt
 
 # import funcs from this repo
 from constants_settings import *
@@ -137,6 +140,7 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, units, md, show_plot=True,
     # if return_nmax is true, you need checklat to be either greater than 0 for northern direction or negative for southern direction
 
     # !!!!!!! ONLY suports cartesian plotting!
+    carsph = 'car'
 
     n_rays_plot = 500 # (dont plot more than 500 on the same plot it looks like chaos)
 
@@ -194,6 +198,7 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, units, md, show_plot=True,
 
         # loop through the rays -- NEED ALL THE RAYS
         for ri, r in enumerate(raylist):
+            w = r['w']
             # only want to plot n_rays_plot rays to visualize -- change this if you want to plot more (but it will get crowded)
             if ri < n_rays_plot:
                 # comes in as SM car in m 
@@ -237,9 +242,6 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, units, md, show_plot=True,
         ax.coastlines()
         plt.savefig(ray_out_dir+'/figures/ccrs_proj.png')
         plt.cla()
-
-        import matplotlib.patches as patches
-        import matplotlib.cbook as cbook
 
         img = plt.imread(ray_out_dir+'/figures/ccrs_proj.png', format='png')
         fig, ax = plt.subplots(figsize=(12,12))
@@ -297,7 +299,7 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, units, md, show_plot=True,
         ax.plot(lfline[0], lfline[1], color='dimgrey', linewidth=1, linestyle='dashed',zorder=3)
 
     # if you wanted to add satellites, here's an example
-    """
+    #"""
     # find DSX
     dsx = sat()             # define a satellite object
     dsx.catnmbr = 44344     # provide NORAD ID
@@ -318,14 +320,14 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, units, md, show_plot=True,
     
     plt.scatter(rotated_dsx[0][0],rotated_dsx[0][2],marker='*',c='goldenrod',s=200,zorder=5)
     plt.scatter(rotated_vpm[0][0],rotated_vpm[0][2],marker='*',c='goldenrod',s=200,zorder=6)
-    """
+    #"""
 
     # some clean up 
     plt.xlabel('L (R$_E$)', color='dimgrey')
     plt.ylabel('L (R$_E$)', color='dimgrey')
     #plt.xlim([0, max(L_shells)])
     plt.xlim([0, 4])
-    plt.ylim([-1.75, 1.75])
+    plt.ylim([-2.25, 1.75])
 
     ax.spines['bottom'].set_color('dimgrey')
     ax.spines['top'].set_color('dimgrey') 
@@ -563,9 +565,6 @@ def plot_plasmasphere_2D(mds,kp):
     ax.coastlines()
     plt.savefig(ray_out_dir+'/figures/ccrs_proj.png')
     plt.cla()
-
-    import matplotlib.patches as patches
-    import matplotlib.cbook as cbook
 
     img = plt.imread(ray_out_dir+'/figures/ccrs_proj.png', format='png')
     
@@ -812,8 +811,8 @@ def rasterize_and_save(fname, rasterize_list=None, fig=None, dpi=None,
     for item in rasterize_list:
 
         # Whether or not plot is a contour plot is important
-        is_contour = (isinstance(item, matplotlib.contour.QuadContourSet) or
-                      isinstance(item, matplotlib.tri.TriContourSet))
+        is_contour = (isinstance(item, mpc.QuadContourSet) or
+                      isinstance(item, mpt.TriContourSet))
 
         # Whether or not collection of lines
         # This is commented as we seldom want to rasterize lines
@@ -821,7 +820,7 @@ def rasterize_and_save(fname, rasterize_list=None, fig=None, dpi=None,
 
         # Whether or not current item is list of patches
         all_patch_types = tuple(
-            x[1] for x in getmembers(matplotlib.patches, isclass))
+            x[1] for x in getmembers(patches, isclass))
         try:
             is_patch_list = isinstance(item[0], all_patch_types)
         except TypeError:

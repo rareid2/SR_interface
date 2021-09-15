@@ -135,10 +135,7 @@ def getBdir(ray_start, ray_datenum, rayfile_directory, thetas, phis, hemimult, m
             r = 1/(np.cos(th*D2R))
             cone_vec = np.array([r*np.sin(th*D2R)*np.cos(ph*D2R),r*np.sin(th*D2R)*np.sin(ph*D2R),r*np.cos(th*D2R)]) 
             cone_vec = np.matmul(T_rotate,np.transpose(cone_vec))
-            if hemi_mult == 180:
-                zsign = -1
-            else:
-                zsign = 1
+            zsign = hemimult
 
             cone_vec = cone_vec/np.linalg.norm(cone_vec)
             converted_dirs.append(zsign*cone_vec)
