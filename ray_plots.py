@@ -289,6 +289,7 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, units, md, show_plot=True,
         axcb.set_label('WNA [deg]')
     else:
         ax.scatter(rotated_rcoords_x, rotated_rcoords_z, c='cornflowerblue', s = 5, zorder = 4)
+        #ax.plot(rotated_rcoords_x[:-1], rotated_rcoords_z[:-1], c='cornflowerblue', linewidth=4, zorder = 4)
 
     # final clean up
     # plot field lines (from IGRF13 model)
@@ -327,7 +328,7 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, units, md, show_plot=True,
     plt.ylabel('L (R$_E$)', color='dimgrey')
     #plt.xlim([0, max(L_shells)])
     plt.xlim([0, 4])
-    plt.ylim([-2.25, 1.75])
+    plt.ylim([-1.75, 1.75])
 
     ax.spines['bottom'].set_color('dimgrey')
     ax.spines['top'].set_color('dimgrey') 
