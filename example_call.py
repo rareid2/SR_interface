@@ -4,9 +4,9 @@ import os
 from constants_settings import *
 from convert_coords import convert2
 from satellites import sat
-from bfield import getBdir
+from bfield import getBdir, getBdir_src
 from run_rays import single_run_rays, parallel_run_rays
-from raytracer_utils import read_rayfile, read_damp_simple
+from raytracer_utils import read_rayfile, read_damp_simple, get_yearmiliday
 from ray_plots import plotray2D, plotrefractivesurface, plot_plasmasphere_2D
 
 # example call to ray tracer!
@@ -35,10 +35,10 @@ dsx.propagatefromTLE(sec=0, orbit_dir='future', crs='SM', carsph='car', units=['
 ray_start = dsx.pos
 
 # here's how to get it from a start location in GEO coords 
-start_lat = 50
-start_lon = 0
-start_alt = 1000e3 # m
-ray_start = convert2([[start_alt+R_E,start_lat,start_lon]], [ray_datenum],'GEO','sph',['m','deg','deg'], 'SM', 'car', ['m','m','m'])
+#start_lat = 50
+#start_lon = 0
+#start_alt = 1000e3 # m
+#ray_start = convert2([[start_alt+R_E,start_lat,start_lon]], [ray_datenum],'GEO','sph',['m','deg','deg'], 'SM', 'car', ['m','m','m'])
 
 # STEP 5 - set freq in Hz
 freqs = [8e3] # Hz
@@ -49,17 +49,16 @@ freqs = [8e3] # Hz
 md = 7
 
 # STEP 7 - how many rays? 
-nrays = 1
+nrays = 3
 
 # STEP 8 - in what direction should the ray point? 
-# set theta as the initial wavenormal angle from Bdir
+# set theta as the initial wavenormal angle from Bdir - this is a cone around the Bdirection with the angle theta
 # range from -90 to 90 deg will go north, 90 to 270 will go south
 thetas = [180]
-# phi is in the longitudanal direction
+# phi is the azimuth (on the surface of the cone -- see Stanford Raytracer gihtub for a visualization)
 phis = [0]
-# hemimult = 1 for noth, -1 for south
-hemimult = -1
-directions, ra, thetas, phis = getBdir(ray_start, ray_datenum, rayfile_directory, thetas, phis, hemimult, md, freqs[0])
+
+directions = getBdir_src(ray_datenum, ray_start, thetas, phis)
 
 # STEP 9 - run, time to run is about 1 sec every 10 rays 
 single_run_rays(ray_datenum, ray_start, directions, freqs, rayfile_directory, md, runmodeldump=False)

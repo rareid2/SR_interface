@@ -288,8 +288,8 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, units, md, show_plot=True,
         axcb = fig.colorbar(lc)
         axcb.set_label('WNA [deg]')
     else:
-        ax.scatter(rotated_rcoords_x, rotated_rcoords_z, c='cornflowerblue', s = 5, zorder = 4)
-        #ax.plot(rotated_rcoords_x[:-1], rotated_rcoords_z[:-1], c='cornflowerblue', linewidth=4, zorder = 4)
+        #ax.scatter(rotated_rcoords_x, rotated_rcoords_z, c='cornflowerblue', s = 5, zorder = 4)
+        ax.plot(rotated_rcoords_x[:-1], rotated_rcoords_z[:-1], c='cornflowerblue', linewidth=4, zorder = 4)
 
     # final clean up
     # plot field lines (from IGRF13 model)

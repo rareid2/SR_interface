@@ -4,7 +4,7 @@ import os
 from constants_settings import *
 from convert_coords import convert2
 from run_rays import single_run_rays, parallel_run_rays
-from raytracer_utils import read_rayfile
+from raytracer_utils import read_rayfile, get_yearmiliday
 import PyGeopack as gp
 import random
 import matplotlib.pyplot as plt
@@ -40,7 +40,7 @@ FlLen 	Field line length in planetary radii
 R 	R = sqrt(x**2 + y**2 + z**2)
 """
 
-def getBline(pos, ray_datenum,stopalt):
+def getBline(pos,ray_datenum,stopalt):
 
     makedate = ray_datenum.strftime('%Y%m%d')
     Date = int(makedate)
@@ -55,7 +55,11 @@ def getBline(pos, ray_datenum,stopalt):
     return T
 
 # --------------------------------------------------------------------
+# OLD FUNCTION!! this requires runnign a ray to get the Bfield -- don't use this 
+# use the next one for increased speed!!!!!!!!!!!!
+
 # a helper func to run a ray to get the most accuarate Bfield 
+
 # use for defining wavenormals
 
 # inputs! 
@@ -109,6 +113,7 @@ def getBdir(ray_start, ray_datenum, rayfile_directory, thetas, phis, hemimult, m
     
     converted_dirs = []
     # if select random was chosen, thetas and phis are passed in as list of zeros of length nrays
+    # this was used for conjunction analysis between DSX and VPM
     if select_random == True:
         nrays = len(thetas)
         thetas = []
@@ -156,3 +161,99 @@ def getBdir(ray_start, ray_datenum, rayfile_directory, thetas, phis, hemimult, m
             converted_dirs.append(converted_dir[0])
 
     return converted_dirs, resangle, thetas, phis # returns unit vector of directions corresponding to input theta and phi vals
+# ---------------------------------------------------------------------------------
+# this is the updated version of getting the magnetic field from the original src code
+# WITHOUT running any rays - it is 100000 times faster, please use this one!
+
+# inputs
+# ray_datenum - datetime object when the rays are to be run
+# positions - list of positions in SM cartesian in meters to sample Bfield at
+
+
+def getBdir_src(ray_datenum, positions, thetas, phis):
+
+    yearday, milliseconds_day = get_yearmiliday(ray_datenum)
+
+    # had to add this in to fix issues with current directory
+    cwd = os.getcwd()
+    os.chdir(raytracer_dir)
+    # make sure there is a model dumps folder
+    ray_out_dir = cwd + '/modeldumps'
+
+    model_outfile = os.path.join(ray_out_dir, 'bmodel_dump.dat')
+    model_inpfile = os.path.join(ray_out_dir, 'bmodel_input.in')
+
+    # Write input positions file
+    f = open(model_inpfile, 'w')
+
+    # Go through list of positions, write a new line for each
+    for pos0 in positions:
+        f.write('%1.15e %1.15e %1.15e\n' % (
+            pos0[0], pos0[1], pos0[2]))
+    f.close()
+
+    # get number of rays for memory allocation
+    nrays = len(positions)
+
+    cmd = './getBfield ' + \
+        '--filename="%s" ' % (model_outfile) + \
+        '--infilename="%s" ' % (model_inpfile) + \
+        ' --yearday=%s --milliseconds_day=%d ' % (yearday, milliseconds_day) + \
+        '--use_igrf=%g --use_tsyganenko=%g ' % (use_IGRF, use_tsyg) + \
+        '--tsyganenko_Pdyn=%g ' % (Pdyn) + \
+        '--tsyganenko_Dst=%g ' % (Dst) + \
+        '--tsyganenko_ByIMF=%g ' % (ByIMF) + \
+        '--tsyganenko_BzIMF=%g ' % (BzIMF) + \
+        '--tsyganenko_W1=%g ' % (W[0]) + \
+        '--tsyganenko_W2=%g ' % (W[1]) + \
+        '--tsyganenko_W3=%g ' % (W[2]) + \
+        '--tsyganenko_W4=%g ' % (W[3]) + \
+        '--tsyganenko_W5=%g ' % (W[4]) + \
+        '--tsyganenko_W6=%g ' % (W[5]) + \
+        '--nrays=%g' % nrays
+    
+    # execute the command
+    os.system(cmd)
+
+    # Move back to the working directory
+    os.chdir(cwd)
+
+    # save the outputs - converted directions
+    converted_dirs = []
+
+    # intermediate output
+    sph_dirs = []   
+
+    # open the file and save stuff
+    f = open(model_outfile,'r')
+    three_count = 0
+    # read output file with all the directions
+    for line in f.readlines():
+        # comes out line by line, need to read in directions one at a time
+        if three_count==0:
+            B0 = []
+        if three_count<2:
+            B0.append(float(line))
+            three_count+=1
+        else:
+            B0.append(float(line))
+            three_count=0
+
+            # reset, that means we have the direc
+            Bmag = np.sqrt(B0[0]**2 + B0[1]**2 + B0[2]**2)
+            Bunit = [B0[0]/Bmag, B0[1]/Bmag, B0[2]/Bmag]
+            # now we have Bunit in SM car
+            # let's put it in spherical (easier for changing the wavenormal)
+            sph_dir = convert2([Bunit], ray_datenum, 'SM', 'car', ['Re','Re','Re'], 'SM', 'sph', ['Re','deg','deg'])     
+            sph_dirs.append(sph_dir[0])
+    f.close()
+
+    # now change to new directions with thetas and phis
+    for sph_dir, theta, phi in zip(sph_dirs,thetas,phis):
+        new_dir = [sph_dir[0],sph_dir[1]+theta, sph_dir[2]+phi]
+        # convert back to SM car
+        converted_dir = convert2([new_dir], ray_datenum, 'SM', 'sph', ['Re','deg','deg'], 'SM', 'car', ['Re','Re','Re']) 
+        
+        converted_dirs.append(converted_dir[0])
+
+    return converted_dirs
