@@ -13,6 +13,7 @@ from matplotlib.collections import LineCollection
 from inspect import getmembers, isclass
 import matplotlib.contour as mpc
 import matplotlib.tri as mpt
+from matplotlib import cm
 
 # import funcs from this repo
 from constants_settings import *
@@ -128,16 +129,15 @@ def get_Lshells(lshells, tvec_datetime, crs, carsph, units):
 
 
 #---------------------------------------------------------------------------
-def plotray2D(ray_datenum, raylist, ray_out_dir, crs, units, md, show_plot=True, return_nmax=False, checklat=None):
+def plotray2D(ray_datenum, raylist, ray_out_dir, crs, units, md, show_plot=True, plot_wna=False):
 
     # give it date, the rays, the output directory to save too, the desired coordinates to plot in
     # and the mode
 
     # show plot will pull up the plot or not
 
-    # return_nmax = true or false, returns the max index of refraction (useful for other stuff)
-    # this will make a plot with color indicating the wna
-    # if return_nmax is true, you need checklat to be either greater than 0 for northern direction or negative for southern direction
+    # plot_wna = true or false, plots the wavenormal angle along the ray path
+    # also returns the max index of refraction (useful for other stuff)
 
     # !!!!!!! ONLY suports cartesian plotting!
     carsph = 'car'
@@ -148,66 +148,68 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, units, md, show_plot=True,
     if not os.path.exists(ray_out_dir+'/figures'):
         os.makedirs(ray_out_dir+'/figures')
 
-    if return_nmax == True:
-        # first, find the max index of refraction (useful for ray spot plots)
-        findmax_deg = []
-        # convert to desired coordinate system into vector list rays
-        ray_coords = []
+    # save from loop
 
-        # loop through the rays -- NEED ALL THE RAYS
-        for ri, r in enumerate(raylist):
-            B   =  r['B0'].iloc[0]
+    # find wna along ray path
+    wnas = []
+    # convert to desired coordinate system into vector list rays rotated into plane of plotting
+    rcoords_x = []
+    rcoords_z = []
+
+    # find the max index of refraction (useful for ray spot plots)
+    #findmax_deg = []
+
+    # loop through the rays
+    for ri, r in enumerate(raylist):
+        # dont plot more than 500 on one plot -- looks like chaos
+        if ri > n_rays_plot:
+            print('cutting off ray plot at 500 rays')
+            break
+        
+        # ------------------- get ray coords -------------------
+        # comes in as SM car in m 
+        tmp_coords = list(zip(r['pos'].x, r['pos'].y, r['pos'].z))
+        tvec_datetime = [ray_datenum + dt.timedelta(seconds=s) for s in r['time']]
+        new_coords = convert2(tmp_coords, tvec_datetime, 'SM', 'car', ['m','m','m'], crs, carsph, units)
+        # start point (for the earth -- just for visualization)
+        ray1 = new_coords[0]
+
+        # get ray freq
+        w = r['w']
+
+        # get all the wnas and loop through each position
+        for ii,rc in enumerate(new_coords):
+            rotated = rotateplane([rc], tvec_datetime, crs, carsph, units)
+            rcoords_x.append(rotated[0][0])
+            rcoords_z.append(rotated[0][2])
+
+            # ----------------for finding the wna ---------
+            B   =  r['B0'].iloc[ii]
             Bmag = np.linalg.norm(B)
             bunit = B/Bmag
-
-            # get the initial wna (already confirmed this is equiv to the initial)
-            w = r['w']
-            kveci = [(w/C)*r['n'].x.iloc[0],(w/C)*r['n'].y.iloc[0],(w/C)*r['n'].z.iloc[0]]
-            kunit = np.array(kveci)/np.linalg.norm(kveci)
-
+            kvec = [(w/C)*r['n'].x.iloc[ii],(w/C)*r['n'].y.iloc[ii],(w/C)*r['n'].z.iloc[ii]]
+            kunit = np.array(kvec)/np.linalg.norm(kvec)
+            
             # alpha is wna
             alpha = np.arccos(np.dot(kunit, bunit))
             alphaedg = float(alpha)*R2D
-            if checklat < 0:
-                alphaedg = 180 - alphaedg
-            if alphaedg > 90:
-                alphaedg = 90 - (alphaedg - 90)
-            findmax_deg.append(alphaedg)
+                
+            # field aligned fix
+            if np.isnan(alphaedg):
+                alphaedg = 0
 
-        
-            # only want to plot 500 rays to visualize
-            if ri < n_rays_plot:
-                # comes in as SM car in m 
-                tmp_coords = list(zip(r['pos'].x, r['pos'].y, r['pos'].z))
-                nmag = np.sqrt(r['n'].x.iloc[0]**2 +r['n'].y.iloc[0]**2+r['n'].z.iloc[0]**2)
-                tvec_datetime = [ray_datenum + dt.timedelta(seconds=s) for s in r['time']]
-                new_coords = convert2(tmp_coords, tvec_datetime, 'SM', 'car', ['m','m','m'], crs, carsph, units)
+            # save
+            wnas.append(alphaedg)
 
-                # save it
-                ray_coords.append(new_coords) 
+        # grab the first one for checking the resonance cone at launch location -- used in DSX / VPM analysis
+        #findmax_deg.append(wnas[0])
 
-        # find max 
-        max_wna = max(findmax_deg)  
-        max_wna_ind = findmax_deg.index(max(findmax_deg))
-        rm = raylist[max_wna_ind]
-        nmax = np.sqrt(rm['n'].x.iloc[0]**2 +rm['n'].y.iloc[0]**2+rm['n'].z.iloc[0]**2)
+    # find max index of refraction -- used in DSX-VPM analysis to find resonance cone
+    #max_wna = max(findmax_deg)  
+    #max_wna_ind = findmax_deg.index(max(findmax_deg))
+    #rm = raylist[max_wna_ind]
+    #nmax = np.sqrt(rm['n'].x.iloc[0]**2 +rm['n'].y.iloc[0]**2+rm['n'].z.iloc[0]**2)
 
-    else:
-        # convert to desired coordinate system into vector list rays
-        ray_coords = []
-
-        # loop through the rays -- NEED ALL THE RAYS
-        for ri, r in enumerate(raylist):
-            w = r['w']
-            # only want to plot n_rays_plot rays to visualize -- change this if you want to plot more (but it will get crowded)
-            if ri < n_rays_plot:
-                # comes in as SM car in m 
-                tmp_coords = list(zip(r['pos'].x, r['pos'].y, r['pos'].z))
-                tvec_datetime = [ray_datenum + dt.timedelta(seconds=s) for s in r['time']]
-                new_coords = convert2(tmp_coords, tvec_datetime, 'SM', 'car', ['m','m','m'], crs, carsph, units)
-
-                # save it
-                ray_coords.append(new_coords) 
 
     # -------------------------------- PLOTTING --------------------------------
     # just some beuatification
@@ -217,8 +219,7 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, units, md, show_plot=True,
     sns.set(font='Franklin Gothic Book',
         rc={'patch.edgecolor': 'w','patch.force_edgecolor': True,})
 
-    # this is all just to get a picture of the Earth on it lol
-    ray1 = ray_coords[0][0]
+    # ----  this is all just to get a picture of the Earth on it lol ---- 
     # this is GEO for the Earth plot
     ray1_sph = convert2([ray1], tvec_datetime, crs, carsph, units, 'GEO', 'sph', ['m','deg','deg'])
     # find ray starting long just for Earth
@@ -257,39 +258,18 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, units, md, show_plot=True,
         ax.add_artist(earth)
         ax.add_artist(iono)
 
-    # plot the rays
-    rotated_rcoords = []
-    all_ray_coords = []
-    # rotate to be in plane (XZ plane)
-    for rayc in ray_coords:
-        ray_individ = []
-        for rc in rayc:
-            rotated = rotateplane([rc], tvec_datetime, crs, carsph, units)
-            rotated_rcoords.append(rotated[0])
-            ray_individ.append(rotated[0])
-        all_ray_coords.append(ray_individ)
-
-    # repack in xz plane
-    rotated_rcoords_x = [rcs[0] for rcs in rotated_rcoords]
-    rotated_rcoords_z = [rcs[2] for rcs in rotated_rcoords]
-
-    # rays x coords 
-    rayx = []
-    rayz = []
-    for rc in all_ray_coords:
-        rx = [float(rr[0]) for rr in rc]
-        rz = [float(rr[2]) for rr in rc]
-        rayx.append(np.array(rx))
-        rayz.append(np.array(rz))
-
     # plot!
-    if return_nmax == True:
-        lc = multiline(rayx, rayz, findmax_deg[:n_rays_plot], cmap='coolwarm', lw=2)
+    if plot_wna == True:
+        # code to plot each ray as a line with INITIAL WNA as the color
+        #lc = multiline(rayx, rayz, findmax_deg[:n_rays_plot], cmap='coolwarm', lw=2)
+        #axcb = fig.colorbar(lc)
+        #axcb.set_label('WNA [deg]')
+        
+        lc = plt.scatter(rcoords_x, rcoords_z, c=wnas, cmap='coolwarm', s = 3, zorder = 4, edgecolor='none')
         axcb = fig.colorbar(lc)
         axcb.set_label('WNA [deg]')
     else:
-        #ax.scatter(rotated_rcoords_x, rotated_rcoords_z, c='cornflowerblue', s = 5, zorder = 4)
-        ax.plot(rotated_rcoords_x[:-1], rotated_rcoords_z[:-1], c='cornflowerblue', linewidth=4, zorder = 4)
+        ax.scatter(rcoords_x, rcoords_z, c='cornflowerblue', s = 1, zorder = 4)
 
     # final clean up
     # plot field lines (from IGRF13 model)
@@ -300,7 +280,7 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, units, md, show_plot=True,
         ax.plot(lfline[0], lfline[1], color='dimgrey', linewidth=1, linestyle='dashed',zorder=3)
 
     # if you wanted to add satellites, here's an example
-    #"""
+    """
     # find DSX
     dsx = sat()             # define a satellite object
     dsx.catnmbr = 44344     # provide NORAD ID
@@ -321,9 +301,9 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, units, md, show_plot=True,
     
     plt.scatter(rotated_dsx[0][0],rotated_dsx[0][2],marker='*',c='goldenrod',s=200,zorder=5)
     plt.scatter(rotated_vpm[0][0],rotated_vpm[0][2],marker='*',c='goldenrod',s=200,zorder=6)
-    #"""
+    """
 
-    # some clean up 
+    # okay now final clean up 
     plt.xlabel('L (R$_E$)', color='dimgrey')
     plt.ylabel('L (R$_E$)', color='dimgrey')
     #plt.xlim([0, max(L_shells)])
@@ -344,9 +324,9 @@ def plotray2D(ray_datenum, raylist, ray_out_dir, crs, units, md, show_plot=True,
     if show_plot:
         plt.show()
     plt.close()
-
-
-    if return_nmax:
+    
+    # used for dsx vpm analysis
+    if plot_wna:
         return nmax
     else:
         return
