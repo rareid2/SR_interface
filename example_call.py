@@ -7,13 +7,13 @@ from satellites import sat
 from bfield import getBdir, getBdir_src
 from run_rays import single_run_rays, parallel_run_rays
 from raytracer_utils import read_rayfile, read_damp_simple, get_yearmiliday
-from ray_plots import plotray2D, plotrefractivesurface, plot_plasmasphere_2D
+from ray_plots import plotray2D, plotrefractivesurface, plot_plasmasphere_2D, plot_ray_plasma
 
 # example call to ray tracer!
 # --------------------------------------- set up ------------------------------------------
 # STEP 1 - set the output directory
-rayfile_directory = '/home/rileyannereid/workspace/2020-06-01_12_00_00_NWCtest' # store output here
-
+rayfile_directory = '/home/rileyannereid/workspace/SR_interface/' # store output here
+md = 6
 # STEP 2 - navigate to constants_settings.py and make sure the settings are correct for the run
 
 # STEP 3 - set the date and time
@@ -31,14 +31,32 @@ dsx.getTLE_ephem()      # get TLEs nearest to this time -- sometimes this will l
 # propagate the orbit! setting sec=0 will give you just the position at that time
 dsx.propagatefromTLE(sec=0, orbit_dir='future', crs='SM', carsph='car', units=['m','m','m'])
 
-# now we have ray start point in the correct coordinates (SM cartesian in m)
+## now we have ray start point in the correct coordinates (SM cartesian in m)
 ray_start = dsx.pos
 
 # here's how to get it from a start location in GEO coords 
-#start_lat = -21.82
-#start_lon =  114.17
-#start_alt = 0 # m
-#ray_start = convert2([[start_alt+R_E,start_lat,start_lon]], [ray_datenum],'GEO','sph',['m','deg','deg'], 'SM', 'car', ['m','m','m'])
+start_lat = -21.82
+start_lon =  114.17
+start_alt = 1000e3 # m
+ray_start = convert2([[start_alt+R_E,start_lat,start_lon]], [ray_datenum],'GEO','sph',['m','deg','deg'], 'SM', 'car', ['m','m','m'])
+
+"""
+# heres a loop to 'trace' a field line with a given step size
+stopalt = 1000 # km
+dstep = 10 # km
+n_steps = int(stopalt / dstep)
+for i in range(n_steps):
+    thetas = [0]
+    phis = [0]
+    directions = getBdir_src(ray_datenum, ray_start_surface, thetas, phis)
+
+    newdir = dstep*1e3 * directions[0] # in meters 
+    ray_start = [ray_start_surface[0][0] + newdir[0], ray_start_surface[0][1] + newdir[1], ray_start_surface[0][2] + newdir[2]]
+    # update
+    ray_start_surface = [ray_start]
+    ray_dist = (np.sqrt(ray_start[0]**2 + ray_start[1]**2 + ray_start[2]**2) - R_E)/1e3
+ray_start = [ray_start]
+"""
 
 # STEP 5 - set freq in Hz
 freqs = [19.88e3] # Hz
@@ -67,29 +85,16 @@ single_run_rays(ray_datenum, ray_start, directions, freqs, rayfile_directory, md
 # STEP 10 - that's it! let's look at output
 
 # Load all the rayfiles in the output directory
-ray_out_dir = rayfile_directory + '/'+dt.datetime.strftime(ray_datenum, '%Y-%m-%d_%H_%M_%S')
+ray_out_dir = rayfile_directory + '/' + dt.datetime.strftime(ray_datenum, '%Y-%m-%d_%H_%M_%S')
 file_titles = os.listdir(ray_out_dir)
 file_titles.sort()
 # create empty lists to fill with ray files
 raylist = []
 for filename in file_titles:
-    if '.ray' in filename and str(md):
+    if '.ray' in filename:
         print(filename)
         raylist += read_rayfile(os.path.join(ray_out_dir, filename))
 
-# example plot
-plotray2D(ray_datenum, raylist, ray_out_dir, 'GEO', ['Re','Re','Re'], md, show_plot=True, plot_wna=True)
-
-
-""" # heres a loop to 'trace' a field line with a given step size
-stopalt = 1000 # km
-dstep = 10 # km
-n_steps = int(stopalt / dstep)
-for i in range(n_steps):
-    directions = getBdir_src(ray_datenum, ray_start_surface, thetas, phis)
-
-    newdir = dstep*1e3 * directions[0] # in meters 
-    ray_start = [ray_start_surface[0][0] + newdir[0], ray_start_surface[0][1] + newdir[1], ray_start_surface[0][2] + newdir[2]]
-    # update
-    ray_start_surface = [ray_start]
-"""
+crs='GEO'
+units=['Re','Re','Re']
+plotray2D(ray_datenum, raylist, ray_out_dir, crs, units, md, ti=int(1e5), show_plot=False, plot_wna=True)
